@@ -56,6 +56,9 @@ def execute_order(database: CartDB, order: Order):
             curr_cart.add_item(val)
 
 def main():
+    """
+    This main function simulates Broadleaf transaction use case #1 as identified in my notes.
+    """
     # Initialize a cart with cart_id 0 in the database.
     db = CartDB()
     cart_id = 0
