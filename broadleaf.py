@@ -5,6 +5,9 @@ def broadleaf_cart_update_generator(num_txn: int,
                               avg_txn_len: int, 
                               cart_ids: list[int], 
                               item_ids: list[int]) -> list[list[str]]:
+    """
+    Return list of transactions.
+    """
     output = []
     assert num_txn > 0
     assert avg_txn_len > 0
@@ -23,6 +26,20 @@ def broadleaf_cart_update_generator(num_txn: int,
     return output
 
 def broadleaf_cart_update_sim():
+    """
+    Example output:
+
+    ['r-8', 'w-2', 'w-7', 'w-9', 'w-1', 'w-5']
+    ['r-5', 'w-8', 'w-2', 'w-9', 'w-4', 'w-1']
+    ['r-6', 'w-8', 'w-6', 'w-0', 'w-8', 'w-2']
+    ['r-5', 'w-8', 'w-3', 'w-1', 'w-7']
+    ['r-8', 'w-0', 'w-9']
+    ['r-4', 'w-1', 'w-3', 'w-4', 'w-6']
+    ['r-1', 'w-2', 'w-5', 'w-6', 'w-0']
+    ['r-2', 'w-3', 'w-6', 'w-4', 'w-1']
+    ['r-7', 'w-2', 'w-7', 'w-7', 'w-8', 'w-3']
+    ['r-8', 'w-6', 'w-0', 'w-2', 'w-9']
+    """
     num_txn = 10
     avg_txn_len = 5
     cart_ids = list(range(10))
