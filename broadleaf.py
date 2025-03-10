@@ -1,3 +1,6 @@
+# https://github.com/BroadleafCommerce
+# Uses PostgreSQL, MySQL
+# Found in Tang et al. Ad Hoc Transactions in Web Applications: The Good, the Bad, and the Ugly
 
 import numpy as np
 from transaction import Transaction
@@ -111,14 +114,21 @@ def main():
     """
     Generate transaction traces for Broadleaf.
     """
-    # Transaction 1
     num_transactions_1 = 5
+    num_transactions_2 = 5
+    # num_transactions_3
+    # num_transactions_4
+    # num_transactions_5
+    # num_transactions_6
+    
+    print()
+
+    # Transaction 1
     print(f"Generating Broadleaf update cart simulation...")
     broadleaf_update_order_sim(num_transactions_1)
     print()
 
     # Transaction 2
-    num_transactions_2 = 5
     print(f"Generating Broadleaf rate item simulation...")
     rateItem_sim(num_transactions_2)
     print()
