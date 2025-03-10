@@ -1,55 +1,67 @@
 
 import numpy as np
+from transaction import Transaction
 
-def broadleaf_cart_update_generator(num_txn: int,
-                              avg_txn_len: int, 
-                              cart_ids: list[int], 
-                              item_ids: list[int]) -> list[list[str]]:
+### Transaction 1 ###
+def doFilterInternalUnlessIgnored(request, response, chain):
     """
-    Return list of transactions.
-    """
-    output = []
-    assert num_txn > 0
-    assert avg_txn_len > 0
-    assert len(cart_ids) > 0
-    assert len(item_ids) > 0
-    txn_lengths = [max(2, round(x)) for x in np.random.normal(avg_txn_len, 1, num_txn)]
-    for i in range(num_txn):
-        txn = []
-        txn_len = txn_lengths[i]
-        cart = np.random.choice(cart_ids, 1)
-        items = np.random.choice(cart_ids, txn_len - 1)
-        txn.append(f"r-{cart[0]}")
-        for item in items:
-            txn.append(f"w-{item}")
-        output.append(txn)
-    return output
+    Purpose: Update cart with new order
+    Source code: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
 
-def broadleaf_cart_update_sim():
+    Pseudocode:
+        In: cart_state, new_order, curr_cart
+
+        TRANSACTION START
+        old_order = SELECT * FROM cart_state WHERE cart=curr_cart
+        // Acquire cart lock
+        UPDATE cart_state SET order = new_order WHERE cart_id=curr_cart
+        // Release cart lock
+        TRANSACTION COMMIT
+    
+    For simplicity, we pass in the cart and order information using
+    the request argument. Request is a tuple where the first argument is
+    the cart_id and the second argument is the new order. 
+    """
+    cart_id, order_id = request[0], request[1]
+    t = Transaction()
+    t.append_read(cart_id)
+    t.append_write(order_id)
+    return t
+
+def broadleaf_update_order_sim(num_transactions: int):
     """
     Example output:
 
-    ['r-8', 'w-2', 'w-7', 'w-9', 'w-1', 'w-5']
-    ['r-5', 'w-8', 'w-2', 'w-9', 'w-4', 'w-1']
-    ['r-6', 'w-8', 'w-6', 'w-0', 'w-8', 'w-2']
-    ['r-5', 'w-8', 'w-3', 'w-1', 'w-7']
-    ['r-8', 'w-0', 'w-9']
-    ['r-4', 'w-1', 'w-3', 'w-4', 'w-6']
-    ['r-1', 'w-2', 'w-5', 'w-6', 'w-0']
-    ['r-2', 'w-3', 'w-6', 'w-4', 'w-1']
-    ['r-7', 'w-2', 'w-7', 'w-7', 'w-8', 'w-3']
-    ['r-8', 'w-6', 'w-0', 'w-2', 'w-9']
+    ['r-5', 'w-7']
+    ['r-76', 'w-55']
+    ['r-3', 'w-49']
+    ['r-95', 'w-73']
+    ['r-80', 'w-37']
+    ['r-40', 'w-99']
+    ['r-17', 'w-55']
+    ['r-82', 'w-78']
+    ['r-36', 'w-95']
+    ['r-7', 'w-40']
     """
-    num_txn = 10
-    avg_txn_len = 5
-    cart_ids = list(range(10))
-    item_ids = list(range(100))
-    sim_results = broadleaf_cart_update_generator(num_txn, avg_txn_len, cart_ids, item_ids)
-    for r in sim_results:
-        print(r)
+    num_carts = 100
+    num_orders = 100
+
+    cart_ids = range(num_carts)
+    order_ids = range(num_orders)
+
+    for _ in range(num_transactions):
+        cart_id = np.random.choice(cart_ids)
+        order_id = np.random.choice(order_ids)
+        transaction = doFilterInternalUnlessIgnored((cart_id, order_id), None, None)
+        print(transaction)
+
+### Transaction 2 ###
+def transaction_2():
+    # TODO
+    pass
 
 def main():
-    broadleaf_cart_update_sim()
+    broadleaf_update_order_sim(10) # Transaction 1
     
 if __name__ == "__main__":
     main()
