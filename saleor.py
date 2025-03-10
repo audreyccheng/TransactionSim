@@ -37,7 +37,7 @@ class Checkout:
         self.completing_started_at: datetime.datetime = np.random.choice([datetime.datetime.now(), None])
         self.exists: bool = np.random.binomial(1, 0.9)
 
-# Transaction 1
+### Transaction 1 ###
 def saleor_checkout_voucher_code_generator(voucher_code: int) -> list[list[str]]:
     """
     Purpose: Coordinate concurrent checkout.
@@ -130,111 +130,9 @@ def saleor_checkout_voucher_code_sim():
         result = saleor_checkout_voucher_code_generator(voucher_code)
         print(result)
 
-def saleor_payment_authorize():
-    """
-    Transaction 2
-    Purpose: Coordinate concurrent payment processing.
-    saleor/payment/gateway.py#authorize
-    """
-
-def saleor_payment_order():
-    """
-    Transaction 3
-    Purpose: Coordinate concurrent payment processing.
-    saleor/graphql/order/mutations/orders.py#OrderCapture
-    """
-
-def saleor_payment_refund():
-    """
-    Transaction 4
-    Purpose: Coordinate concurrent payment processing.
-    saleor/order/actions.py#create_refund_fulfillment
-    """
-
-def saleor_checkout_void_payment():
-    """
-    Transaction 5
-    Purpose: Coordinate concurrent payment processing.
-    saleor/checkout/complete_checkout.py#complete_checkout(with payment to void)
-    (complete_checkout_with_payment) https://github.com/saleor/saleor/blob/27eed6e93f79a73b81cf97465ba8552b66d31c40/saleor/checkout/complete_checkout.py#L1781
-    (_complete_checkout_fail_handler) https://github.com/saleor/saleor/blob/27eed6e93f79a73b81cf97465ba8552b66d31c40/saleor/checkout/complete_checkout.py#L1867
-    (gateway.paymend_refund_or_void) https://github.com/saleor/saleor/blob/2ee9490104e6b256899d90adcde9f7bdfbcecfe1/saleor/payment/gateway.py#L535
-    """
-
-def saleor_checkout_confirm_payment():
-    """
-    Transaction 6
-    Purpose: Coordinate concurrent checkout.
-    saleor/checkout/complete_checkout.py#complete_checkout(with payment to confirm)
-    https://github.com/saleor/saleor/blob/2ee9490104e6b256899d90adcde9f7bdfbcecfe1/saleor/payment/gateway.py#L452
-    """
-
-def saleor_cancel_fulfillment():
-    """
-    Transaction 7
-    Purpose: Coordinate concurrent fulfillment cancel.
-    saleor/graphql/order/mutations/fulfillments.py#FulfillmentCancel
-    """
-
-def saleor_fulfill_order():
-    """
-    Transaction 8
-    Purpose: Coordinate concurrent fulfillment.
-    saleor/graphql/order/mutations/fulfillments.py#OrderFulfill
-    """
-
-def saleor_get_payment_adyen():
-    """
-    Transaction 9
-    Purpose: Coordinate concurrent payment processing.
-    saleor/payment/gateways/adyen/webhooks.py#get_payment
-    """
-
-def saleor_get_checkout_adyen():
-    """
-    Transaction 10
-    Purpose: Coordinate concurrent order processing.
-    saleor/payment/gateways/adyen/webhooks.py#get_checkout
-    """
-
-def saleor_get_payment_stripe():
-    """
-    Transaction 11
-    Purpose: Coordinate concurrent payment processing.
-    saleor/payment/gateways/stripe/webhooks.py#get_payment
-    """
-
-def saleor_get_checkout_stripe():
-    """
-    Transaction 12
-    Purpose: Coordinate concurrent order processing.
-    saleor/payment/gateways/stripe/webhooks.py#get_checkout
-    """
-
-def saleor_get_delete_categories():
-    """
-    Transaction 13
-    Purpose: Coordinate concurrent categories updating.
-    saleor/product/utils/__init__.py#delete_categories
-    """
-
-def saleor_get_order_line_update():
-    """
-    Transaction 14
-    Purpose: Coordinate concurrent order updating.
-    saleor/warehouse/management.py#OrderLineUpdate
-    """
-
-def saleor_get_order_line_create():
-    """
-    Transaction 15
-    Purpose: Coordinate concurrent order updating.
-    saleor/graphql/order/mutations/orders.py#OrderLineCreate
-    """
-
+### Transaction 2 (Transaction 16 from Tang et al.) ###
 def saleor_checkout_payment_process_generator(checkout_pk: int) -> list[list[str]]:
     """
-    Transaction 16
     Purpose: Coordinate concurrent checkout.
     saleor/checkout/complete_checkout.py#complete_checkout(with payment to process)
     
@@ -362,7 +260,6 @@ def complete_checkout_fail_handler(checkout: Checkout, payment: Payment, txn: li
             txn.append(f"r-void")   
     return txn
 
-
 def saleor_checkout_payment_process_sim():
     """
     Example output;
@@ -385,9 +282,114 @@ def saleor_checkout_payment_process_sim():
         result = saleor_checkout_payment_process_generator(checkout_pk)
         print(result)
 
+### OTHER TRANSACTIONS ###
+
+def saleor_payment_authorize():
+    """
+    Transaction 2
+    Purpose: Coordinate concurrent payment processing.
+    saleor/payment/gateway.py#authorize
+    """
+
+def saleor_payment_order():
+    """
+    Transaction 3
+    Purpose: Coordinate concurrent payment processing.
+    saleor/graphql/order/mutations/orders.py#OrderCapture
+    """
+
+def saleor_payment_refund():
+    """
+    Transaction 4
+    Purpose: Coordinate concurrent payment processing.
+    saleor/order/actions.py#create_refund_fulfillment
+    """
+
+def saleor_checkout_void_payment():
+    """
+    Transaction 5
+    Purpose: Coordinate concurrent payment processing.
+    saleor/checkout/complete_checkout.py#complete_checkout(with payment to void)
+    (complete_checkout_with_payment) https://github.com/saleor/saleor/blob/27eed6e93f79a73b81cf97465ba8552b66d31c40/saleor/checkout/complete_checkout.py#L1781
+    (_complete_checkout_fail_handler) https://github.com/saleor/saleor/blob/27eed6e93f79a73b81cf97465ba8552b66d31c40/saleor/checkout/complete_checkout.py#L1867
+    (gateway.paymend_refund_or_void) https://github.com/saleor/saleor/blob/2ee9490104e6b256899d90adcde9f7bdfbcecfe1/saleor/payment/gateway.py#L535
+    """
+
+def saleor_checkout_confirm_payment():
+    """
+    Transaction 6
+    Purpose: Coordinate concurrent checkout.
+    saleor/checkout/complete_checkout.py#complete_checkout(with payment to confirm)
+    https://github.com/saleor/saleor/blob/2ee9490104e6b256899d90adcde9f7bdfbcecfe1/saleor/payment/gateway.py#L452
+    """
+
+def saleor_cancel_fulfillment():
+    """
+    Transaction 7
+    Purpose: Coordinate concurrent fulfillment cancel.
+    saleor/graphql/order/mutations/fulfillments.py#FulfillmentCancel
+    """
+
+def saleor_fulfill_order():
+    """
+    Transaction 8
+    Purpose: Coordinate concurrent fulfillment.
+    saleor/graphql/order/mutations/fulfillments.py#OrderFulfill
+    """
+
+def saleor_get_payment_adyen():
+    """
+    Transaction 9
+    Purpose: Coordinate concurrent payment processing.
+    saleor/payment/gateways/adyen/webhooks.py#get_payment
+    """
+
+def saleor_get_checkout_adyen():
+    """
+    Transaction 10
+    Purpose: Coordinate concurrent order processing.
+    saleor/payment/gateways/adyen/webhooks.py#get_checkout
+    """
+
+def saleor_get_payment_stripe():
+    """
+    Transaction 11
+    Purpose: Coordinate concurrent payment processing.
+    saleor/payment/gateways/stripe/webhooks.py#get_payment
+    """
+
+def saleor_get_checkout_stripe():
+    """
+    Transaction 12
+    Purpose: Coordinate concurrent order processing.
+    saleor/payment/gateways/stripe/webhooks.py#get_checkout
+    """
+
+def saleor_get_delete_categories():
+    """
+    Transaction 13
+    Purpose: Coordinate concurrent categories updating.
+    saleor/product/utils/__init__.py#delete_categories
+    """
+
+def saleor_get_order_line_update():
+    """
+    Transaction 14
+    Purpose: Coordinate concurrent order updating.
+    saleor/warehouse/management.py#OrderLineUpdate
+    """
+
+def saleor_get_order_line_create():
+    """
+    Transaction 15
+    Purpose: Coordinate concurrent order updating.
+    saleor/graphql/order/mutations/orders.py#OrderLineCreate
+    """
+
+
 def main():
-    # saleor_checkout_voucher_code_sim()
-    saleor_checkout_payment_process_sim()
+    # saleor_checkout_voucher_code_sim() # Transaction 1
+    saleor_checkout_payment_process_sim() # Transaction 2
 
 if __name__ == '__main__':
     main()
