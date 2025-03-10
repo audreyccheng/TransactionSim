@@ -36,7 +36,6 @@ class Transaction:
         Stored as a "r-item" string where item is the argument to the
         method.
         """
-        assert type(item) == str
         self.trace.append(f"r-{item}")
 
     def append_write(self, item: str):
@@ -45,7 +44,6 @@ class Transaction:
         Stored as a "w-item" string where item is the argument to the
         method.
         """
-        assert type(item) == str
         self.trace.append(f"w-{item}")
 
     def clear(self):
