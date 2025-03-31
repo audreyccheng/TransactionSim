@@ -1,6 +1,38 @@
-# https://github.com/BroadleafCommerce
-# Uses PostgreSQL, MySQL
-# Found in Tang et al. Ad Hoc Transactions in Web Applications: The Good, the Bad, and the Ugly
+"""
+Transaction simulations for BroadleafCommerce: https://github.com/BroadleafCommerce
+Uses PostgreSQL, MySQL
+Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good, the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto-sigmod22.pdf
+
+### EXAMPLE OUTPUT ###
+
+Generating Broadleaf update cart simulation...
+['r-cart(89)', 'w-order(7)']
+['r-cart(92)', 'w-order(87)']
+['r-cart(76)', 'w-order(44)']
+['r-cart(71)', 'w-order(19)']
+['r-cart(92)', 'w-order(7)']
+
+Generating Broadleaf rate item simulation...
+['r-summary(56)', 'r-detail(28)', 'w-detail(28)/rating(1)', 'w-summary(56)/rating(1)']
+['r-summary(19)', 'r-detail(24)', 'w-detail(24)/rating(3)', 'w-summary(19)/rating(3)']
+['r-summary(47)', 'r-detail(23)', 'w-detail(23)/rating(1)', 'w-summary(47)/rating(1)']
+['r-summary(46)', 'r-detail(58)', 'w-detail(58)/rating(7)', 'w-summary(46)/rating(7)']
+['r-summary(72)', 'r-detail(19)', 'w-detail(19)/rating(6)', 'w-summary(72)/rating(6)']
+
+Generating Broadleaf order payment simulation
+['w-amount(260.01)', 'w-unconfirmed type', 'w-orderPayment((324, 662))', 'w-customerPayment(662)']
+['w-amount(249.84)', 'w-unconfirmed type', 'w-orderPayment((314, 58))', 'w-customerPayment(58)']
+['w-amount(290.67)', 'w-unconfirmed type', 'w-orderPayment((442, 90))', 'w-customerPayment(90)']
+['w-amount(154.19)', 'w-unconfirmed type', 'w-orderPayment((88, 671))', 'w-customerPayment(671)']
+['w-amount(222.38)', 'w-unconfirmed type', 'w-orderPayment((298, 981))', 'w-customerPayment(981)']
+
+Generating Broadleaf save offer simulation
+['w-offerCode(422)']
+['w-offerCode(723)']
+['w-offerCode(332)']
+['w-offerCode(304)']
+['w-offerCode(325)']
+"""
 
 import numpy as np
 from transaction import Transaction
@@ -147,6 +179,38 @@ def order_payment_sim(num_transactions: int):
                                                             round(np.random.normal(200, 50), 2))
         print(transaction)
 
+### Transaction 4 ###
+def saveOfferCode(offerCode):
+    """
+    Purpose: Save offer code
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/offer/service/OfferServiceImpl.java#L140C1-L145C6
+    
+    Pseudocode:
+    In: offers
+
+    TRANSACTION START
+    INSERT INTO offers VALUES offerCode
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    t.append_write(f"offerCode({offerCode})")
+    return t
+
+def save_offer_sim(num_transactions: int):
+    """
+    Example output
+
+    ['w-733']
+    ['w-128']
+    ['w-415']
+    ['w-542']
+    ['w-685']
+    """
+    num_offer_codes = 1000
+    for _ in range(num_transactions):
+        transaction = saveOfferCode(np.random.choice(range(num_offer_codes)))
+        print(transaction)
+
 #######################
 ####   Simulation  ####
 #######################
@@ -158,6 +222,7 @@ def main():
     num_transactions_1 = 5
     num_transactions_2 = 5
     num_transactions_3 = 5
+    num_transactions_4 = 5
     
     print()
 
@@ -174,6 +239,11 @@ def main():
     # Transaction 3
     print(f"Generating Broadleaf order payment simulation")
     order_payment_sim(num_transactions_3)
+    print()
+
+    # Transaction 4
+    print(f"Generating Broadleaf save offer simulation")
+    save_offer_sim(num_transactions_4)
     print()
 
 if __name__ == "__main__":
