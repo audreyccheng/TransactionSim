@@ -32,6 +32,13 @@ Generating Broadleaf save offer simulation
 ['w-offerCode(332)']
 ['w-offerCode(304)']
 ['w-offerCode(325)']
+
+Generating Broadleaf get offer simulation
+['r-offer(381)']
+['r-offer(528)']
+['r-offer(456)']
+['r-offer(205)']
+['r-offer(988)']
 """
 
 import numpy as np
@@ -189,26 +196,60 @@ def saveOfferCode(offerCode):
     In: offers
 
     TRANSACTION START
-    INSERT INTO offers VALUES offerCode
+    INSERT INTO offers VALUES offerCode, offer
     TRANSACTION COMMIT
+
+    For simplicity, we represent the offer and offerCode with the same index.
     """
     t = Transaction()
     t.append_write(f"offerCode({offerCode})")
+    t.append_write(f"offer({offerCode})")
     return t
 
 def save_offer_sim(num_transactions: int):
     """
     Example output
 
-    ['w-733']
-    ['w-128']
-    ['w-415']
-    ['w-542']
-    ['w-685']
+    ['w-offerCode(422)']
+    ['w-offerCode(723)']
+    ['w-offerCode(332)']
+    ['w-offerCode(304)']
+    ['w-offerCode(325)']
     """
     num_offer_codes = 1000
     for _ in range(num_transactions):
         transaction = saveOfferCode(np.random.choice(range(num_offer_codes)))
+        print(transaction)
+
+### Transaction 5 ###
+def lookupOfferByCode(code):
+    """
+    Purpose: Retrieve offer corresponding to given code
+
+    Pseudocode:
+    In: offers
+
+    TRANSACTION START
+    SELECT offer FROM offers WHERE offerCode == code
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    t.append_read(f"offer({code})")
+    return t
+
+def get_offer_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['r-offer(381)']
+    ['r-offer(528)']
+    ['r-offer(456)']
+    ['r-offer(205)']
+    ['r-offer(988)']
+    """
+    num_offer_codes = 1000
+    for _ in range(num_transactions):
+        transaction = lookupOfferByCode(np.random.choice(range(num_offer_codes)))
         print(transaction)
 
 #######################
@@ -223,7 +264,9 @@ def main():
     num_transactions_2 = 5
     num_transactions_3 = 5
     num_transactions_4 = 5
+    num_transactions_5 = 5
     
+    # Extra space for formatting
     print()
 
     # Transaction 1
@@ -244,6 +287,11 @@ def main():
     # Transaction 4
     print(f"Generating Broadleaf save offer simulation")
     save_offer_sim(num_transactions_4)
+    print()
+
+    # Transaction 5
+    print(f"Generating Broadleaf get offer simulation")
+    get_offer_sim(num_transactions_5)
     print()
 
 if __name__ == "__main__":
