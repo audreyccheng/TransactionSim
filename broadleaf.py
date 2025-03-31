@@ -35,7 +35,7 @@ def doFilterInternalUnlessIgnored(request: tuple[int, int], response, chain):
     t.append_write(f"order({order_id})")
     return t
 
-def broadleaf_update_order_sim(num_transactions: int):
+def update_order_sim(num_transactions: int):
     """
     Example output:
 
@@ -106,6 +106,47 @@ def rateItem_sim(num_transactions: int):
                                np.random.choice(ratings))
         print(transaction)
 
+### Transaction 3 ###
+def createOrderPaymentFromCustomerPayment(order, customerPayment, amount):
+    """
+    Purpose: Save order payment details
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
+    
+    Pseudocode:
+
+    In: order_payments
+    orderPayment = createOrderPayment(order, customerPayment)
+    TRANSACTION START
+    INSERT INTO order_payments VALUES (amount, UNCONFIRMED_TRANSACTION_TYPE, orderPayment, customerPayment)
+    TRANSACTION COMMIT
+    """
+    UNCONFIRMED_TRANSACTION_TYPE = "unconfirmed type"
+    orderPayment = (order, customerPayment)
+    t = Transaction()
+    t.append_write(f"amount({amount})")
+    t.append_write(UNCONFIRMED_TRANSACTION_TYPE)
+    t.append_write(f"orderPayment({orderPayment})")
+    t.append_write(f"customerPayment({customerPayment})")
+    return t
+
+def order_payment_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['w-amount(263.53)', 'w-unconfirmed type', 'w-orderPayment((110, 561))', 'w-customerPayment(561)']
+    ['w-amount(183.57)', 'w-unconfirmed type', 'w-orderPayment((379, 504))', 'w-customerPayment(504)']
+    ['w-amount(238.83)', 'w-unconfirmed type', 'w-orderPayment((498, 520))', 'w-customerPayment(520)']
+    ['w-amount(257.33)', 'w-unconfirmed type', 'w-orderPayment((681, 509))', 'w-customerPayment(509)']
+    ['w-amount(221.4)', 'w-unconfirmed type', 'w-orderPayment((223, 859))', 'w-customerPayment(859)']
+    """
+    num_orders = 1000
+    num_customerPayment = 1000
+    for _ in range(num_transactions):
+        transaction = createOrderPaymentFromCustomerPayment(np.random.choice(range(num_orders)),
+                                                            np.random.choice(range(num_customerPayment)),
+                                                            round(np.random.normal(200, 50), 2))
+        print(transaction)
+
 #######################
 ####   Simulation  ####
 #######################
@@ -116,16 +157,13 @@ def main():
     """
     num_transactions_1 = 5
     num_transactions_2 = 5
-    # num_transactions_3
-    # num_transactions_4
-    # num_transactions_5
-    # num_transactions_6
+    num_transactions_3 = 5
     
     print()
 
     # Transaction 1
     print(f"Generating Broadleaf update cart simulation...")
-    broadleaf_update_order_sim(num_transactions_1)
+    update_order_sim(num_transactions_1)
     print()
 
     # Transaction 2
@@ -133,7 +171,10 @@ def main():
     rateItem_sim(num_transactions_2)
     print()
 
-    # More transactions (TODO)
+    # Transaction 3
+    print(f"Generating Broadleaf order payment simulation")
+    order_payment_sim(num_transactions_3)
+    print()
 
 if __name__ == "__main__":
     main()
