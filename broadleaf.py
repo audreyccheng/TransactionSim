@@ -5,40 +5,40 @@ Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good, the B
 
 ### EXAMPLE OUTPUT ###
 
-Generating Broadleaf update cart simulation...
-['r-cart(89)', 'w-order(7)']
-['r-cart(92)', 'w-order(87)']
-['r-cart(76)', 'w-order(44)']
-['r-cart(71)', 'w-order(19)']
-['r-cart(92)', 'w-order(7)']
+Generating Broadleaf update cart simulation
+['r-cart(43)', 'w-order(66)']
+['r-cart(72)', 'w-order(77)']
+['r-cart(14)', 'w-order(36)']
+['r-cart(13)', 'w-order(90)']
+['r-cart(85)', 'w-order(51)']
 
-Generating Broadleaf rate item simulation...
-['r-summary(56)', 'r-detail(28)', 'w-detail(28)/rating(1)', 'w-summary(56)/rating(1)']
-['r-summary(19)', 'r-detail(24)', 'w-detail(24)/rating(3)', 'w-summary(19)/rating(3)']
-['r-summary(47)', 'r-detail(23)', 'w-detail(23)/rating(1)', 'w-summary(47)/rating(1)']
-['r-summary(46)', 'r-detail(58)', 'w-detail(58)/rating(7)', 'w-summary(46)/rating(7)']
-['r-summary(72)', 'r-detail(19)', 'w-detail(19)/rating(6)', 'w-summary(72)/rating(6)']
+Generating Broadleaf rate item simulation
+['r-summary(14)', 'r-detail(56)', 'w-detail(56)/rating(9)', 'w-summary(14)/rating(9)']
+['r-summary(1)', 'r-detail(1)', 'w-detail(1)/rating(4)', 'w-summary(1)/rating(4)']
+['r-summary(57)', 'r-detail(66)', 'w-detail(66)/rating(6)', 'w-summary(57)/rating(6)']
+['r-summary(50)', 'r-detail(67)', 'w-detail(67)/rating(8)', 'w-summary(50)/rating(8)']
+['r-summary(12)', 'r-detail(30)', 'w-detail(30)/rating(6)', 'w-summary(12)/rating(6)']
 
 Generating Broadleaf order payment simulation
-['w-amount(260.01)', 'w-unconfirmed type', 'w-orderPayment((324, 662))', 'w-customerPayment(662)']
-['w-amount(249.84)', 'w-unconfirmed type', 'w-orderPayment((314, 58))', 'w-customerPayment(58)']
-['w-amount(290.67)', 'w-unconfirmed type', 'w-orderPayment((442, 90))', 'w-customerPayment(90)']
-['w-amount(154.19)', 'w-unconfirmed type', 'w-orderPayment((88, 671))', 'w-customerPayment(671)']
-['w-amount(222.38)', 'w-unconfirmed type', 'w-orderPayment((298, 981))', 'w-customerPayment(981)']
+['w-amount(236.03)', 'w-unconfirmed type', 'w-orderPayment((81, 430))', 'w-customerPayment(430)']
+['w-amount(306.84)', 'w-unconfirmed type', 'w-orderPayment((307, 888))', 'w-customerPayment(888)']
+['w-amount(124.3)', 'w-unconfirmed type', 'w-orderPayment((178, 894))', 'w-customerPayment(894)']
+['w-amount(275.32)', 'w-unconfirmed type', 'w-orderPayment((53, 734))', 'w-customerPayment(734)']
+['w-amount(191.22)', 'w-unconfirmed type', 'w-orderPayment((70, 225))', 'w-customerPayment(225)']
 
 Generating Broadleaf save offer simulation
-['w-offerCode(422)']
-['w-offerCode(723)']
-['w-offerCode(332)']
-['w-offerCode(304)']
-['w-offerCode(325)']
+['w-offerCode(929)', 'w-offer(929)']
+['w-offerCode(896)', 'w-offer(896)']
+['w-offerCode(695)', 'w-offer(695)']
+['w-offerCode(848)', 'w-offer(848)']
+['w-offerCode(620)', 'w-offer(620)']
 
 Generating Broadleaf get offer simulation
-['r-offer(381)']
-['r-offer(528)']
-['r-offer(456)']
-['r-offer(205)']
-['r-offer(988)']
+['r-offer(644)']
+['r-offer(662)']
+['r-offer(165)']
+['r-offer(896)']
+['r-offer(780)']
 """
 
 import numpy as np
@@ -225,10 +225,11 @@ def save_offer_sim(num_transactions: int):
 def lookupOfferByCode(code):
     """
     Purpose: Retrieve offer corresponding to given code
+    Github: 
 
-    Pseudocode:
+    Pseudocode: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/offer/service/OfferServiceImpl.java#L156C4-L163C6
+    
     In: offers
-
     TRANSACTION START
     SELECT offer FROM offers WHERE offerCode == code
     TRANSACTION COMMIT
@@ -270,12 +271,12 @@ def main():
     print()
 
     # Transaction 1
-    print(f"Generating Broadleaf update cart simulation...")
+    print(f"Generating Broadleaf update cart simulation")
     update_order_sim(num_transactions_1)
     print()
 
     # Transaction 2
-    print(f"Generating Broadleaf rate item simulation...")
+    print(f"Generating Broadleaf rate item simulation")
     rateItem_sim(num_transactions_2)
     print()
 
