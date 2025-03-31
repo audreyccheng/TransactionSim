@@ -153,7 +153,7 @@ def order_payment_sim(num_transactions: int):
 
 def main():
     """
-    Generate transaction traces for Broadleaf.
+    Generate Broadleaf transaction traces
     """
     num_transactions_1 = 5
     num_transactions_2 = 5
