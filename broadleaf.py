@@ -52,7 +52,7 @@ from transaction import Transaction
 def doFilterInternalUnlessIgnored(request: tuple[int, int], response, chain):
     """
     Purpose: Update cart with new order
-    Source code: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
+    Source code: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework-web/src/main/java/org/broadleafcommerce/core/web/order/security/CartStateFilter.java#L96C1-L126C64
 
     Pseudocode:
         In: cart_state, new_order, curr_cart
