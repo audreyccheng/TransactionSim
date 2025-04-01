@@ -6,39 +6,39 @@ Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good, the B
 ### EXAMPLE OUTPUT ###
 
 Generating Broadleaf update cart simulation
-['r-cart(43)', 'w-order(66)']
-['r-cart(72)', 'w-order(77)']
-['r-cart(14)', 'w-order(36)']
-['r-cart(13)', 'w-order(90)']
-['r-cart(85)', 'w-order(51)']
+['r-cart(95)', 'w-order(41)']
+['r-cart(52)', 'w-order(44)']
+['r-cart(65)', 'w-order(19)']
+['r-cart(93)', 'w-order(42)']
+['r-cart(18)', 'w-order(69)']
 
 Generating Broadleaf rate item simulation
-['r-summary(14)', 'r-detail(56)', 'w-detail(56)/rating(9)', 'w-summary(14)/rating(9)']
-['r-summary(1)', 'r-detail(1)', 'w-detail(1)/rating(4)', 'w-summary(1)/rating(4)']
-['r-summary(57)', 'r-detail(66)', 'w-detail(66)/rating(6)', 'w-summary(57)/rating(6)']
-['r-summary(50)', 'r-detail(67)', 'w-detail(67)/rating(8)', 'w-summary(50)/rating(8)']
-['r-summary(12)', 'r-detail(30)', 'w-detail(30)/rating(6)', 'w-summary(12)/rating(6)']
+['r-summary(70)', 'r-detail(12)', 'w-detail(12)/rating(1)', 'w-summary(70)/rating(1)']
+['r-summary(73)', 'r-detail(86)', 'w-detail(86)/rating(7)', 'w-summary(73)/rating(7)']
+['r-summary(47)', 'r-detail(66)', 'w-detail(66)/rating(3)', 'w-summary(47)/rating(3)']
+['r-summary(10)', 'r-detail(40)', 'w-detail(40)/rating(9)', 'w-summary(10)/rating(9)']
+['r-summary(5)', 'r-detail(9)', 'w-detail(9)/rating(0)', 'w-summary(5)/rating(0)']
 
 Generating Broadleaf order payment simulation
-['w-amount(236.03)', 'w-unconfirmed type', 'w-orderPayment((81, 430))', 'w-customerPayment(430)']
-['w-amount(306.84)', 'w-unconfirmed type', 'w-orderPayment((307, 888))', 'w-customerPayment(888)']
-['w-amount(124.3)', 'w-unconfirmed type', 'w-orderPayment((178, 894))', 'w-customerPayment(894)']
-['w-amount(275.32)', 'w-unconfirmed type', 'w-orderPayment((53, 734))', 'w-customerPayment(734)']
-['w-amount(191.22)', 'w-unconfirmed type', 'w-orderPayment((70, 225))', 'w-customerPayment(225)']
+['w-amount(280.57)', 'w-unconfirmed type', 'w-orderPayment((381, 463))', 'w-customerPayment(463)']
+['w-amount(238.93)', 'w-unconfirmed type', 'w-orderPayment((639, 949))', 'w-customerPayment(949)']
+['w-amount(238.13)', 'w-unconfirmed type', 'w-orderPayment((49, 109))', 'w-customerPayment(109)']
+['w-amount(89.48)', 'w-unconfirmed type', 'w-orderPayment((914, 721))', 'w-customerPayment(721)']
+['w-amount(229.44)', 'w-unconfirmed type', 'w-orderPayment((609, 153))', 'w-customerPayment(153)']
 
 Generating Broadleaf save offer simulation
-['w-offerCode(929)', 'w-offer(929)']
+['w-offerCode(554)', 'w-offer(554)']
+['w-offerCode(386)', 'w-offer(386)']
 ['w-offerCode(896)', 'w-offer(896)']
-['w-offerCode(695)', 'w-offer(695)']
-['w-offerCode(848)', 'w-offer(848)']
-['w-offerCode(620)', 'w-offer(620)']
+['w-offerCode(803)', 'w-offer(803)']
+['w-offerCode(52)', 'w-offer(52)']
 
 Generating Broadleaf get offer simulation
-['r-offer(644)']
-['r-offer(662)']
-['r-offer(165)']
-['r-offer(896)']
-['r-offer(780)']
+['r-offer(331)']
+['r-offer(683)']
+['r-offer(189)']
+['r-offer(519)']
+['r-offer(188)']
 """
 
 import numpy as np
