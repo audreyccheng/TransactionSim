@@ -28,7 +28,7 @@ class Payment:
         self.pk: int = np.random.choice(range(100))
         self.id: int = self.pk
         self.to_confirm: bool = np.random.binomial(1, 0.5)
-        self.is_active: bool = np.random.binomial(1, 0.5)
+        self.is_active: bool = np.random.binomial(1, 0.8)
         self.can_refund: bool = np.random.binomial(1, 0.5)
         self.can_void: bool = np.random.binomial(1, 0.5)
         self.order_id: int = np.random.choice(range(100))
@@ -64,7 +64,7 @@ class FulfillmentLine:
 class OrderLine:
     def __init__(self):
         self.variant: bool = np.random.binomial(1, 0.5)
-        self.track_inventory = np.random.binomial(1, 0.5)
+        self.track_inventory: bool = np.random.binomial(1, 0.5)
         self.pk = np.random.choice(range(100))
 
 class Order:
@@ -353,10 +353,10 @@ def saleor_cancel_order_generator(fulfillment_pk: int) -> list[str]:
     txn.append(f"r-{fulfillment_pk}")
     if fulfillment.warehouse:
         for line in fulfillment.lines:
-            if line.order_line.variant and line.order_line.variant.track_inventory:
+            if line.order_line.variant and line.order_line.track_inventory:
                 txn.append(f"r-{line.order_line.pk}")
         txn.append(f"w-{fulfillment_pk}")
-    txn.append(f"w-{fulfillment.lines}")
+    txn.append(f"w-{len(fulfillment.lines)} lines")
 
     return txn
 
@@ -364,6 +364,16 @@ def saleor_cancel_order_sim():
     """
     Example output:
 
+    ['r-79', 'r-47', 'r-48', 'r-92', 'r-49', 'w-79', 'w-5 lines']
+    ['r-30', 'w-30', 'w-8 lines']
+    ['r-85', 'r-91', 'r-25', 'w-85', 'w-9 lines']
+    ['r-14', 'r-31', 'r-58', 'r-16', 'w-14', 'w-8 lines']
+    ['r-98', 'r-51', 'r-28', 'r-27', 'w-98', 'w-8 lines']
+    ['r-43', 'r-91', 'w-43', 'w-3 lines']
+    ['r-83', 'r-43', 'w-83', 'w-6 lines']
+    ['r-2', 'w-2', 'w-2 lines']
+    ['r-6', 'w-6', 'w-2 lines']
+    ['r-64', 'r-26', 'w-64', 'w-6 lines']
     """
     fulfillment_pks = list(range(100))
     num_txn = 10
@@ -410,8 +420,10 @@ def saleor_payment_order(order_pk: int, amount: float) -> list[str]:
     # Validation: payment must be active and amount must be positive.
     if not payment.is_active:
         txn.append("validation-error: inactive payment")
+        return txn # Abort transaction
     if amount <= 0:
         txn.append("validation-error: non-positive amount")
+        return txn # Abort transaction
     
     # Perform the capture transaction via the payment gateway.
     # This call would normally create and record a new transaction.
@@ -434,6 +446,16 @@ def saleor_payment_order_sim():
     """
     Example output:
 
+    ['r-2', 'r-32', 'w-48', 'r-61', 'w-2', 'w-32']
+    ['r-34', 'r-82', 'w-65']
+    ['r-87', 'r-68', 'w-95']
+    ['r-23', 'r-43', 'validation-error: inactive payment']
+    ['r-25', 'r-97', 'w-23']
+    ['r-27', 'r-8', 'validation-error: inactive payment']
+    ['r-37', 'r-94', 'w-31']
+    ['r-14', 'r-98', 'w-89']
+    ['r-74', 'r-67', 'w-98']
+    ['r-59', 'r-85', 'w-64', 'r-66', 'w-59', 'w-85']
     """
     order_pks: int = list(range(100))
     amount: float = np.random.uniform(-10, 100)
@@ -454,30 +476,26 @@ def saleor_order_fulfill_generator(order_id: str, input_data: dict) -> list[str]
     PSEUDOCODE:
     In: order_id, input_data
     TRANSACTION START
-      order = SELECT * FROM Order WHERE id = order_id FOR UPDATE
-      order_lines = SELECT * FROM OrderLine WHERE id IN (list of order_line_ids) FOR UPDATE
-      for each order_line in order_lines:
-          # Decide if this order_line will be fulfilled (e.g. random choice)
-          IF eligible for fulfillment:
-              # Get or create fulfillment record (locks or creates the row)
-              fulfillment = SELECT * FROM Fulfillment WHERE order = order FOR UPDATE
-              IF not exists:
-                  fulfillment = INSERT INTO Fulfillment(order) VALUES (...)
+        order = SELECT * FROM Order WHERE id = order_id FOR UPDATE
+        order_lines = SELECT * FROM OrderLine WHERE id IN (list of order_line_ids) FOR UPDATE
+        for each order_line in order_lines:
+            # Decide if this order_line will be fulfilled (e.g. random choice)
+            IF eligible for fulfillment:
+                # Get or create fulfillment record (locks or creates the row)
+                fulfillment = SELECT * FROM Fulfillment WHERE order = order FOR UPDATE
+                IF not exists:
+                    fulfillment = INSERT INTO Fulfillment(order) VALUES (...)
 
-              # For the order line, read the allocation and associated stock records
-              allocation = SELECT * FROM Allocation WHERE order_line = order_line FOR UPDATE
-              stock = SELECT * FROM Stock WHERE id = allocation.stock_id FOR UPDATE
+                quantity = random.randrange(0, line.quantity) + 1
+                # For the order line, read the allocation and associated stock records
+                allocation = SELECT * FROM Allocation WHERE order_line = order_line FOR UPDATE
+                stock = SELECT * FROM Stock WHERE id = allocation.stock_id FOR UPDATE
 
-              # Determine fulfillment quantity (e.g., random quantity)
-              quantity = calculated quantity
-              # Create a new fulfillment line record (write)
-              INSERT INTO FulfillmentLine(fulfillment, order_line, quantity, stock)
-              # Update order_line to set quantity_fulfilled (write)
-              UPDATE OrderLine SET quantity_fulfilled = quantity WHERE id = order_line.id
-              # Update allocation: reduce quantity_allocated (write)
-              UPDATE Allocation SET quantity_allocated = quantity_allocated - quantity WHERE id = allocation.pk
-              # Update stock: reduce quantity_allocated (write)
-              UPDATE Stock SET quantity_allocated = quantity_allocated - quantity WHERE id = stock.pk
+                quantity = calculated quantity # Determine fulfillment quantity (e.g., random quantity)
+                INSERT INTO FulfillmentLine(fulfillment, order_line, quantity, stock) # New fulfillment line record
+                UPDATE OrderLine SET quantity_fulfilled = quantity WHERE id = order_line.id
+                UPDATE Allocation SET quantity_allocated = quantity_allocated - quantity WHERE id = allocation.pk
+                UPDATE Stock SET quantity_allocated = quantity_allocated - quantity WHERE id = stock.pk
 
       txn.append("w-{order_id}")  # update order record with new status
     TRANSACTION COMMIT
@@ -492,6 +510,7 @@ def saleor_order_fulfill_generator(order_id: str, input_data: dict) -> list[str]
     for line_id in order_line_ids:
         txn.append(f"r-{line_id}")
     
+    # TODO: differentiate between different order lines in txn list
     # Process each order line
     for line in input_data.get("lines", []):
         warehouse_id = line.get("warehouse")
@@ -499,15 +518,16 @@ def saleor_order_fulfill_generator(order_id: str, input_data: dict) -> list[str]
         
         # Simulate fulfillment decision and subsequent writes
         if line.get("fulfill", True):
-            txn.append("rw-fulfillment")  # get_or_create fulfillment
-            txn.append("r-allocation")
+            txn.append("r-fulfillment")  # get_or_create fulfillment
+            if not np.random.binomial(1, 0.5):  # If fulfillment doesn't exist
+                txn.append("w-fulfillment")
+            txn.append("r-alloc")
             txn.append("r-stock")
             txn.append("w-fulfillment_line")
-            txn.append("w-order_line")       # update quantity_fulfilled
-            txn.append("w-allocation")       # update allocation.quantity_allocated
-            txn.append("w-stock")            # update stock.quantity_allocated     
-    # Update the order status
-    txn.append(f"w-{order_id}")
+            txn.append("w-order_line")
+            txn.append("w-alloc")
+            txn.append("w-stock")   
+    txn.append(f"w-{order_id}") # Update order status
     
     return txn
 
@@ -515,14 +535,25 @@ def saleor_order_fulfill_sim():
     """
     Example output:
 
+    ['r-53', 'r-59', 'r-89', 'r-75', 'r-71', 'r-28', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-60', 'r-9', 'r-76', 'w-53']
+    ['r-53', 'r-69', 'r-87', 'r-39', 'r-77', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-84', 'r-86', 'w-53']
+    ['r-19', 'r-89', 'r-84', 'r-70', 'r-9', 'r-28', 'r-38', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-19']
+    ['r-18', 'r-17', 'r-68', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-18']
+    ['r-38', 'r-12', 'r-2', 'r-45', 'r-15', 'r-19', 'r-94', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-64', 'r-96', 'w-38']
+    ['r-46', 'r-63', 'r-72', 'r-14', 'r-55', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-44', 'r-27', 'w-46']
+    ['r-35', 'r-51', 'r-6', 'r-94', 'r-48', 'r-65', 'r-61', 'r-66', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-83', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-35']
+    ['r-38', 'r-34', 'r-71', 'r-92', 'r-68', 'w-38']
+    ['r-81', 'r-56', 'r-4', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-81']
+    ['r-4', 'r-19', 'r-91', 'r-36', 'r-66', 'r-62', 'r-70', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-4']
     """
     order_ids = list(range(100))
     num_txn = 10
     for _ in range(num_txn):
-        num_lines = np.random.choice(range(1, 10))
+        num_lines = np.random.choice(range(1, 5))
         input_data = {
             "order_line_ids": [np.random.choice(order_ids) for _ in range(num_lines)],
-            "lines": [{"warehouse": np.random.choice(order_ids), "fulfill": np.random.choice(True, False)} for _ in range(num_lines)]
+            # NOTE: "fulfill" being random choice between True/False IS in the original code
+            "lines": [{"warehouse": np.random.choice(order_ids), "fulfill": np.random.binomial(1, 0.5)} for _ in range(num_lines)]
         }
         order_id = np.random.choice(order_ids)
         result = saleor_order_fulfill_generator(order_id, input_data)
@@ -589,6 +620,16 @@ def saleor_order_lines_create_sim():
     """
     Example output:
 
+    ['r-64', 'r-87', 'w-line_87', 'r-49', 'w-line_49', 'r-94', 'w-line_94', 'r-96', 'w-line_96', 'r-41', 'w-line_41', 'r-86', 'w-line_86', 'r-26', 'w-line_26', 'r-50', 'w-line_50', 'w-order_event', 'w-64', 'r-line_87', 'r-line_49', 'r-line_94', 'r-line_96', 'r-line_41', 'r-line_86', 'r-line_26', 'r-line_50', 'w-64', 'w-64', 'w-64', 'w-order_event_status']
+    ['r-54', 'r-84', 'w-line_84', 'r-50', 'w-line_50', 'r-23', 'w-line_23', 'r-97', 'w-line_97', 'r-23', 'w-line_23', 'r-21', 'w-line_21', 'w-order_event', 'w-54', 'r-line_84', 'r-line_50', 'r-line_23', 'r-line_97', 'r-line_23', 'r-line_21', 'w-54', 'w-54', 'w-54', 'w-order_event_status']
+    ['r-76', 'r-11', 'w-line_11', 'r-36', 'w-line_36', 'w-order_event', 'w-76', 'r-line_11', 'r-line_36', 'w-76', 'w-76', 'w-76', 'w-order_event_status']
+    ['r-18', 'r-59', 'w-line_59', 'r-6', 'w-line_6', 'r-93', 'w-line_93', 'r-76', 'w-line_76', 'r-70', 'w-line_70', 'r-38', 'w-line_38', 'w-order_event', 'w-18', 'r-line_59', 'r-line_6', 'r-line_93', 'r-line_76', 'r-line_70', 'r-line_38', 'w-18', 'w-18', 'w-18', 'w-order_event_status']
+    ['r-18', 'r-10', 'w-line_10', 'r-22', 'w-line_22', 'r-51', 'w-line_51', 'r-28', 'w-line_28', 'w-order_event', 'w-18', 'r-line_10', 'r-line_22', 'r-line_51', 'r-line_28', 'w-18', 'w-18', 'w-18', 'w-order_event_status']
+    ['r-66', 'r-6', 'w-line_6', 'r-73', 'w-line_73', 'r-92', 'w-line_92', 'w-order_event', 'w-66', 'r-line_6', 'r-line_73', 'r-line_92', 'w-66', 'w-66', 'w-66', 'w-order_event_status']
+    ['r-23', 'r-93', 'w-line_93', 'r-60', 'w-line_60', 'r-21', 'w-line_21', 'r-27', 'w-line_27', 'r-56', 'w-line_56', 'r-61', 'w-line_61', 'r-55', 'w-line_55', 'w-order_event', 'w-23', 'r-line_93', 'r-line_60', 'r-line_21', 'r-line_27', 'r-line_56', 'r-line_61', 'r-line_55', 'w-23', 'w-23', 'w-23', 'w-order_event_status']
+    ['r-21', 'r-36', 'w-line_36', 'r-80', 'w-line_80', 'r-54', 'w-line_54', 'r-40', 'w-line_40', 'r-73', 'w-line_73', 'r-49', 'w-line_49', 'r-33', 'w-line_33', 'r-41', 'w-line_41', 'r-92', 'w-line_92', 'w-order_event', 'w-21', 'r-line_36', 'r-line_80', 'r-line_54', 'r-line_40', 'r-line_73', 'r-line_49', 'r-line_33', 'r-line_41', 'r-line_92', 'w-21', 'w-21', 'w-21', 'w-order_event_status']
+    ['r-90', 'r-13', 'w-line_13', 'r-39', 'w-line_39', 'r-24', 'w-line_24', 'r-43', 'w-line_43', 'r-16', 'w-line_16', 'r-72', 'w-line_72', 'w-order_event', 'w-90', 'r-line_13', 'r-line_39', 'r-line_24', 'r-line_43', 'r-line_16', 'r-line_72', 'w-90', 'w-90', 'w-90', 'w-order_event_status']
+    ['r-58', 'r-89', 'w-line_89', 'r-5', 'w-line_5', 'r-14', 'w-line_14', 'r-32', 'w-line_32', 'r-67', 'w-line_67', 'r-40', 'w-line_40', 'w-order_event', 'w-58', 'r-line_89', 'r-line_5', 'r-line_14', 'r-line_32', 'r-line_67', 'r-line_40', 'w-58', 'w-58', 'w-58', 'w-order_event_status']
     """
     order_ids = list(range(100))
     num_txn = 10
@@ -668,10 +709,71 @@ def saleor_stripe_handle_authorized_payment_intent_sim():
     """
     Example output:
 
+    ['r-95', 'r-95', 'w-update_pmt_details-55', 'r-transaction-55', 'w-insert_into_transaction-55', 'w-update_payment-55']
+    ['r-42', 'r-64', 'r-42', 'w-update_pmt_details-64', 'r-transaction-64', 'w-insert_into_transaction-64', 'w-update_payment-64']
+    ['r-77', 'r-34', 'r-77', 'w-update_pmt_details-34', 'w-insert_into_transaction-34']
+    ['r-38', 'r-38', 'w-update_pmt_details-69', 'r-transaction-69', 'w-insert_into_transaction-69', 'w-update_payment-69']
+    ['r-81', 'r-54', 'r-81', 'w-update_pmt_details-54', 'w-insert_into_transaction-54']
+    ['r-53', 'r-53', 'w-update_pmt_details-17', 'r-transaction-17', 'w-insert_into_transaction-17', 'w-update_payment-17']
+    ['r-12', 'r-12', 'w-update_pmt_details-37']
+    ['r-0', 'r-67', 'r-0', 'w-update_pmt_details-67', 'r-transaction-67', 'w-insert_into_transaction-67', 'w-update_payment-67']
+    ['r-50', 'r-50', 'w-update_pmt_details-94', 'r-transaction-94', 'w-insert_into_transaction-94', 'w-update_payment-94']
+    ['r-98', 'r-35', 'r-98', 'w-update_pmt_details-35']
     """
-    payment_intents = [StripePaymentObj() for _ in range(10)]
-    for payment_intent in payment_intents:
+    num_txn = 10
+    for _ in range(num_txn):
+        payment_intent = StripePaymentObj()
         result = saleor_stripe_handle_authorized_payment_intent_generator(payment_intent)
+        print(result)
+
+### Transaction 8 (Transaction 14 from Tang et al.) ###
+def saleor_stock_bulk_update_generator(stocks: list[dict], fields_to_update: list[str]) -> list[str]:
+    """
+    Transaction 14
+    Purpose: Coordinate concurrent order updating.
+    saleor/warehouse/management.py#StockBulkUpdate
+    
+    https://github.com/saleor/saleor/blob/716be111ef3cb9310824174de2416491a141d8f3/saleor/warehouse/management.py#L64
+    PSEUDOCODE:
+    In: 
+    TRANSACTION START
+      SELECT id FROM Stock WHERE id IN ([stock_ids]) FOR UPDATE
+      BULK UPDATE Stock SET <fields_to_update> WHERE id IN ([stock_ids])
+    TRANSACTION COMMIT
+    """
+    txn = []
+
+    stock_ids = [stock["id"] for stock in stocks]
+    stock_ids_str = ", ".join([str(stock_id) for stock_id in stock_ids])
+    txn.append(f"r-{stock_ids_str}")
+    fields_to_update_str = ", ".join(fields_to_update)
+    txn.append(f"w-{fields_to_update_str}") # Bulk update the stocks with the given fields
+    
+    return txn
+
+def saleor_stock_bulk_update_sim():
+    """
+    Example output:
+
+    ['r-27, 21, 86, 11, 74, 28, 98, 60, 46', 'w-quantity, price']
+    ['r-45, 51, 94, 16, 57', 'w-quantity, price']
+    ['r-33, 56, 92, 75, 84, 44, 66, 98', 'w-quantity, price']
+    ['r-58', 'w-quantity, price']
+    ['r-9, 8, 14, 31, 86, 29, 6', 'w-quantity, price']
+    ['r-82, 13, 16, 6, 87, 33, 6', 'w-quantity, price']
+    ['r-83, 52, 62, 21, 49, 83, 55', 'w-quantity, price']
+    ['r-90', 'w-quantity, price']
+    ['r-46, 15, 5, 3, 41, 15, 46', 'w-quantity, price']
+    ['r-82, 31, 51, 92', 'w-quantity, price']
+    """
+    num_txn = 10
+    for _ in range(num_txn):
+        stocks = [
+            {"id": np.random.choice(range(100)), "quantity": np.random.randint(1, 100), "price": np.random.uniform(10, 100)}
+            for _ in range(np.random.randint(1, 10))
+        ]
+        fields_to_update = ["quantity", "price"]
+        result = saleor_stock_bulk_update_generator(stocks, fields_to_update)
         print(result)
 
 ### OTHER TRANSACTIONS ###
@@ -713,16 +815,15 @@ def saleor_get_delete_categories():
     saleor/product/utils/__init__.py#delete_categories
     """
 
-def saleor_get_order_line_update():
-    """
-    Transaction 14
-    Purpose: Coordinate concurrent order updating.
-    saleor/warehouse/management.py#OrderLineUpdate
-    """
-
 def main():
     # saleor_checkout_voucher_code_sim() # Transaction 1
-    saleor_checkout_payment_process_sim() # Transaction 2
+    # saleor_checkout_payment_process_sim() # Transaction 2
+    # saleor_cancel_order_sim() # Transaction 3
+    # saleor_payment_order_sim() # Transaction 4
+    # saleor_order_fulfill_sim() # Transaction 5
+    # saleor_order_lines_create_sim() # Transaction 6
+    # saleor_stripe_handle_authorized_payment_intent_sim() # Transaction 7
+    saleor_stock_bulk_update_sim() # Transaction 8
 
 if __name__ == '__main__':
     main()
