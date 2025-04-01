@@ -25,20 +25,66 @@ class Code:
 
 class Payment:
     def __init__(self):
-        self.id: int = np.random.choice(range(100))
+        self.pk: int = np.random.choice(range(100))
+        self.id: int = self.pk
         self.to_confirm: bool = np.random.binomial(1, 0.5)
         self.is_active: bool = np.random.binomial(1, 0.5)
         self.can_refund: bool = np.random.binomial(1, 0.5)
         self.can_void: bool = np.random.binomial(1, 0.5)
-
+        self.order_id: int = np.random.choice(range(100))
+        
 class Checkout:
     def __init__(self):
+        self.id: int = np.random.choice(range(100))
         self.is_voucher_usage_increased: bool = np.random.binomial(1, 0.5)
         self.completing_started_at: datetime.datetime = np.random.choice([datetime.datetime.now(), None])
         self.exists: bool = np.random.binomial(1, 0.9)
 
-### Transaction 1 ###
-def saleor_checkout_voucher_code_generator(voucher_code: int) -> list[list[str]]:
+class StripePaymentObj:
+    def __init__(self):
+        self.payment_intent_id: int = np.random.choice(range(100))
+        self.payment_active: bool = np.random.binomial(1, 0.5)
+        self.payment_order_exists: bool = np.random.binomial(1, 0.5)
+        self.payment_charge_status_pending: bool = np.random.binomial(1, 0.5)
+        self.checkout_exists: bool = np.random.binomial(1, 0.5)
+        self.payment_amount: int = np.random.choice(range(100))
+        self.payment_currency: str = np.random.choice(["USD", "EUR", "GBP"])
+
+class Fulfillment:
+    def __init__(self):
+        num_lines = np.random.choice(range(1, 10))
+        self.lines = [FulfillmentLine() for _ in range(num_lines)]
+        self.warehouse = np.random.choice(range(100))
+
+class FulfillmentLine:
+    def __init__(self):
+        self.order_line = OrderLine()
+        self.pk = np.random.choice(range(100))
+
+class OrderLine:
+    def __init__(self):
+        self.variant: bool = np.random.binomial(1, 0.5)
+        self.track_inventory = np.random.binomial(1, 0.5)
+        self.pk = np.random.choice(range(100))
+
+class Order:
+    def __init__(self, order_pk: int):
+        self.pk: int = order_pk
+        self.payment: Payment = Payment()
+        self.status: str = "pending"
+        self.exists: bool = np.random.binomial(1, 0.5)
+
+class Transaction: 
+    def __init__(self):
+        self.kind: str = np.random.choice(["ACTION_TO_CONFIRM", "CAPTURE", "REFUND", "VOID"])
+        self.pk: int = np.random.choice(range(100))
+
+class Site:
+    def __init__(self):
+        self.pk: int = np.random.choice(range(100))
+
+### Transaction 1 (Transaction 1 from Tang et al.) ###
+def saleor_checkout_voucher_code_generator(voucher_code: int) -> list[str]:
     """
     Purpose: Coordinate concurrent checkout.
     saleor/checkout/complete_checkout.py#complete_checkout(with voucher code usage)
@@ -130,8 +176,8 @@ def saleor_checkout_voucher_code_sim():
         result = saleor_checkout_voucher_code_generator(voucher_code)
         print(result)
 
-### Transaction 2 (Transaction 16 from Tang et al.) ###
-def saleor_checkout_payment_process_generator(checkout_pk: int) -> list[list[str]]:
+### Transaction 2 (Transaction 5, 6, 16 from Tang et al.) ###
+def saleor_checkout_payment_process_generator(checkout_pk: int) -> list[str]:
     """
     Purpose: Coordinate concurrent checkout.
     saleor/checkout/complete_checkout.py#complete_checkout(with payment to process)
@@ -262,7 +308,7 @@ def complete_checkout_fail_handler(checkout: Checkout, payment: Payment, txn: li
 
 def saleor_checkout_payment_process_sim():
     """
-    Example output;
+    Example output:
 
     ['r-13', 'r-80', 'r-ACTION_TO_CONFIRM']
     ['r-0', 'r-order0']
@@ -282,20 +328,361 @@ def saleor_checkout_payment_process_sim():
         result = saleor_checkout_payment_process_generator(checkout_pk)
         print(result)
 
+### Transaction 3 (Transaction 7 from Tang et al.) ###
+def saleor_cancel_order_generator(fulfillment_pk: int) -> list[str]:
+    """
+    Purpose: Coordinate concurrent order cancellation.
+    saleor/order/actions.py#cancel_fulfillment
+    
+    https://github.com/saleor/saleor/blob/c0423c3cd4968b287d71896d086e03483ac196d1/saleor/order/actions.py#L776
+    PSEUDOCODE: 
+    In: fulfillment_pk
+    TRANSACTION START
+    fulfillment = Select * from Fulfillment where pk=fulfillment.pk FOR UPDATE
+    if warehouse:
+        for line in fulfillment:
+            if line.order_line.variant and line.order_line.variant.track_inventory:
+                stock = Select * from Stock where pk=line.order_line.variant.pk FOR UPDATE LIMIT 1  
+        bulk_update (write)
+    fulfillment_status (save) –> write
+    TRANSACTION COMMIT
+    """
+    txn = []
+
+    fulfillment = Fulfillment()
+    txn.append(f"r-{fulfillment_pk}")
+    if fulfillment.warehouse:
+        for line in fulfillment.lines:
+            if line.order_line.variant and line.order_line.variant.track_inventory:
+                txn.append(f"r-{line.order_line.pk}")
+        txn.append(f"w-{fulfillment_pk}")
+    txn.append(f"w-{fulfillment.lines}")
+
+    return txn
+
+def saleor_cancel_order_sim():
+    """
+    Example output:
+
+    """
+    fulfillment_pks = list(range(100))
+    num_txn = 10
+    for _ in range(num_txn):
+        fulfillment_pk = np.random.choice(fulfillment_pks)
+        result = saleor_cancel_order_generator(fulfillment_pk)
+        print(result)
+
+### Transaction 4 (Transaction 3 from Tang et al.) ###
+def saleor_payment_order(order_pk: int, amount: float) -> list[str]:
+    """
+    Transaction 3
+    Purpose: Coordinate concurrent payment processing.
+    saleor/graphql/order/mutations/orders.py#OrderCapture
+
+    https://github.com/saleor/saleor/blob/c738dcc49f65750fa39e6cd5c619f89e50184894/saleor/graphql/order/mutations/order_capture.py#L56
+    PSEUDOCODE:
+    In: order_id, amount
+    TRANSACTION START
+        order = SELECT * FROM Order WHERE id = order_id FOR UPDATE
+        payment = SELECT * FROM Payment WHERE id = order.payment_id FOR UPDATE
+        IF NOT payment.is_active:
+            TRANSACTION ABORT
+        IF amount <= 0:
+            TRANSACTION ABORT
+        transaction = CALL gateway.capture(payment, amount)
+        WRITE transaction record -> write transaction details
+        IF transaction.kind == TransactionKind.CAPTURE:
+            site = SELECT * FROM Site FOR UPDATE
+            UPDATE order status to "charged" -> write order record
+            UPDATE payment status -> write payment record
+    TRANSACTION COMMIT
+    """
+    txn = []
+
+    # Read order row from DB and lock it for update
+    order = Order(order_pk)
+    txn.append(f"r-{order_pk}")
+    
+    # Read payment row (associated with the order) and lock it for update
+    payment = order.payment
+    txn.append(f"r-{payment.pk}")
+    
+    # Validation: payment must be active and amount must be positive.
+    if not payment.is_active:
+        txn.append("validation-error: inactive payment")
+    if amount <= 0:
+        txn.append("validation-error: non-positive amount")
+    
+    # Perform the capture transaction via the payment gateway.
+    # This call would normally create and record a new transaction.
+    transaction = Transaction()  # Result from gateway.capture(payment, amount)
+    txn.append(f"w-{transaction.pk}")  # Write operation: saving the transaction record
+    
+    # If the capture transaction succeeded, update order and payment statuses.
+    if transaction.kind == "CAPTURE":
+        # Read site settings row for update (e.g., for logging or additional validation)
+        site = Site()
+        txn.append(f"r-{site.pk}")
+        
+        # Write operations: updating order and payment statuses.
+        txn.append(f"w-{order.pk}")    # Write operation: update order status to 'charged'
+        txn.append(f"w-{payment.pk}")  # Write operation: update payment status (captured)
+
+    return txn
+
+def saleor_payment_order_sim():
+    """
+    Example output:
+
+    """
+    order_pks: int = list(range(100))
+    amount: float = np.random.uniform(-10, 100)
+    num_txn = 10
+    for _ in range(num_txn):
+        order_pk = np.random.choice(order_pks)
+        result = saleor_payment_order(order_pk, amount)
+        print(result)
+
+### Transaction 5 (Transaction 8 from Tang et al.) ###
+def saleor_order_fulfill_generator(order_id: str, input_data: dict) -> list[str]:
+    """
+    Transaction 8
+    Purpose: Coordinate concurrent order fulfillment.
+    saleor/graphql/order/mutations/fulfillments.py#OrderFulfill
+
+    https://github.com/saleor/saleor/blob/c738dcc49f65750fa39e6cd5c619f89e50184894/saleor/graphql/order/mutations/order_fulfill.py#L252
+    PSEUDOCODE:
+    In: order_id, input_data
+    TRANSACTION START
+      order = SELECT * FROM Order WHERE id = order_id FOR UPDATE
+      order_lines = SELECT * FROM OrderLine WHERE id IN (list of order_line_ids) FOR UPDATE
+      for each order_line in order_lines:
+          # Decide if this order_line will be fulfilled (e.g. random choice)
+          IF eligible for fulfillment:
+              # Get or create fulfillment record (locks or creates the row)
+              fulfillment = SELECT * FROM Fulfillment WHERE order = order FOR UPDATE
+              IF not exists:
+                  fulfillment = INSERT INTO Fulfillment(order) VALUES (...)
+
+              # For the order line, read the allocation and associated stock records
+              allocation = SELECT * FROM Allocation WHERE order_line = order_line FOR UPDATE
+              stock = SELECT * FROM Stock WHERE id = allocation.stock_id FOR UPDATE
+
+              # Determine fulfillment quantity (e.g., random quantity)
+              quantity = calculated quantity
+              # Create a new fulfillment line record (write)
+              INSERT INTO FulfillmentLine(fulfillment, order_line, quantity, stock)
+              # Update order_line to set quantity_fulfilled (write)
+              UPDATE OrderLine SET quantity_fulfilled = quantity WHERE id = order_line.id
+              # Update allocation: reduce quantity_allocated (write)
+              UPDATE Allocation SET quantity_allocated = quantity_allocated - quantity WHERE id = allocation.pk
+              # Update stock: reduce quantity_allocated (write)
+              UPDATE Stock SET quantity_allocated = quantity_allocated - quantity WHERE id = stock.pk
+
+      txn.append("w-{order_id}")  # update order record with new status
+    TRANSACTION COMMIT
+    """
+    txn = []
+    
+    # Read order record and lock for update
+    txn.append(f"r-{order_id}")
+    
+    # Retrieve order lines (simulated from input_data)
+    order_line_ids = input_data.get("order_line_ids", [])
+    for line_id in order_line_ids:
+        txn.append(f"r-{line_id}")
+    
+    # Process each order line
+    for line in input_data.get("lines", []):
+        warehouse_id = line.get("warehouse")
+        txn.append(f"r-{warehouse_id}")
+        
+        # Simulate fulfillment decision and subsequent writes
+        if line.get("fulfill", True):
+            txn.append("rw-fulfillment")  # get_or_create fulfillment
+            txn.append("r-allocation")
+            txn.append("r-stock")
+            txn.append("w-fulfillment_line")
+            txn.append("w-order_line")       # update quantity_fulfilled
+            txn.append("w-allocation")       # update allocation.quantity_allocated
+            txn.append("w-stock")            # update stock.quantity_allocated     
+    # Update the order status
+    txn.append(f"w-{order_id}")
+    
+    return txn
+
+def saleor_order_fulfill_sim():
+    """
+    Example output:
+
+    """
+    order_ids = list(range(100))
+    num_txn = 10
+    for _ in range(num_txn):
+        num_lines = np.random.choice(range(1, 10))
+        input_data = {
+            "order_line_ids": [np.random.choice(order_ids) for _ in range(num_lines)],
+            "lines": [{"warehouse": np.random.choice(order_ids), "fulfill": np.random.choice(True, False)} for _ in range(num_lines)]
+        }
+        order_id = np.random.choice(order_ids)
+        result = saleor_order_fulfill_generator(order_id, input_data)
+        print(result)
+
+### Transaction 6 (Transaction 15 from Tang et al.) ###
+def saleor_order_lines_create_generator(order_id: str, input_data: dict) -> list[str]:
+    """
+    Transaction 15
+    Purpose: Coordinate concurrent order updating.
+    saleor/graphql/order/mutations/orders.py#OrderLineCreate
+
+    https://github.com/saleor/saleor/blob/c738dcc49f65750fa39e6cd5c619f89e50184894/saleor/graphql/order/mutations/order_lines_create.py#L175
+    PSEUDOCODE:
+    In: order_id, input_data (which contains a list of new order line inputs)
+    TRANSACTION START
+        order = SELECT * FROM Order WHERE id = order_id FOR UPDATE
+        For each line in input_data["lines"]:
+            Read the product variant record
+            Insert a new order line record -> write new_order_line
+        Create products_added event –> write
+        Invalidate order prices (update order.should_refresh_prices)
+        Recalculate order weight:
+            For each order line:
+                Read order_line record
+            Then update order weight –> write
+        Update order search vector –> write
+        Save the order record with update_fields –> write
+        Trigger order status event –> write order_event_status
+    TRANSACTION COMMIT
+    """
+    txn = []
+
+    # Read order record (lock for update)
+    txn.append(f"r-{order_id}")
+
+    # Process each new order line from input_data
+    for line in input_data.get("lines", []):
+        variant_id = line.get("variant_id")
+        # Read product variant record (lock for update)
+        txn.append(f"r-{variant_id}")
+        # Simulate writing a new order line record. Here we simulate an order line ID.
+        order_line_id = f"line_{variant_id}"
+        txn.append(f"w-{order_line_id}")
+
+    # Create order event for added products
+    txn.append("w-order_event")
+    # Invalidate order prices
+    txn.append(f"w-{order_id}")  # update should_refresh_prices field
+
+    # Recalculate order weight
+    for line in input_data.get("lines", []):
+        order_line_id = f"line_{line.get('variant_id')}"
+        txn.append(f"r-{order_line_id}")  # read each order line for weight calculation
+    txn.append(f"w-{order_id}")  # Update order weight field
+
+    txn.append(f"w-{order_id}") # Update search_vector field
+    txn.append(f"w-{order_id}") # Save the order (final write)
+    txn.append("w-order_event_status")     # Call event by order status (simulate writing order event status update)
+
+    return txn
+
+def saleor_order_lines_create_sim():
+    """
+    Example output:
+
+    """
+    order_ids = list(range(100))
+    num_txn = 10
+    for _ in range(num_txn):
+        num_lines = np.random.choice(range(1, 10))
+        input_data = {
+            "lines": [{"variant_id": np.random.choice(order_ids)} for _ in range(num_lines)]
+        }
+        order_id = np.random.choice(order_ids)
+        result = saleor_order_lines_create_generator(order_id, input_data)
+        print(result)
+
+### Transaction 7 (Transaction 11, 12 from Tang et al.) ###
+def saleor_stripe_handle_authorized_payment_intent_generator(payment_intent: StripePaymentObj) -> list[str]:
+    """
+    Purpose: Coordinate concurrent payment processing.
+    saleor/payment/gateways/stripe/webhooks.py#handle_authorized_payment_intent
+
+    https://github.com/saleor/saleor/blob/c738dcc49f65750fa39e6cd5c619f89e50184894/saleor/payment/gateways/stripe/webhooks.py#L302C5-L302C37
+    PSEUDOCODE:
+    TRANSACTION START
+        payment = SELECT * FROM Payment WHERE transactions.token = '{payment_intent_id}'
+        if checkout_exists:
+            checkout = SELECT * FROM Checkout WHERE payment_id = payment_id AND is_active = TRUE FOR UPDATE
+        # Re-read Payment with a lock (to avoid race conditions)
+        payment = SELECT * FROM Payment WHERE transactions.token = '{payment_intent_id}' FOR UPDATE
+        UPDATE Payment SET payment_method_details = 'new_method_details' WHERE id = payment_id;
+      
+        If Payment is NOT active:
+            SELECT * FROM Transaction WHERE payment_id = payment_id AND kind = 'AUTH'
+            INSERT INTO Transaction (payment_id, kind, amount, currency) VALUES ...
+            UPDATE Payment SET charge_status = 'VOIDED' WHERE id = payment_id
+      
+        Elif Payment is linked to an Order:
+            If charge status is PENDING:
+                INSERT INTO Transaction (payment_id, kind, amount, currency) VALUES ... 
+        
+        Elif Checkout exists (and no Order):
+            SELECT * FROM Transaction WHERE payment_id = payment_id AND kind = 'AUTH'
+            INSERT INTO Transaction (payment_id, kind, amount, currency) VALUES ...
+            UPDATE Payment SET charge_status = 'UPDATED' WHERE id = payment_id
+            SELECT * FROM Checkout WHERE id = checkout_id FOR UPDATE
+            INSERT INTO Order (order_data) VALUES ('order_info')
+    """
+    txn = []
+    payment = Payment()
+    checkout = Checkout()
+
+    txn.append(f"r-{payment_intent.payment_intent_id}")
+       
+    if payment_intent.checkout_exists:
+        txn.append(f"r-{payment.id}")
+
+    # Re-read Payment with lock
+    txn.append(f"r-{payment_intent.payment_intent_id}")
+    txn.append(f"w-update_pmt_details-{payment.id}")
+
+    if not payment_intent.payment_active:
+        # Payment is inactive –> void/refund branch.
+        txn.append(f"r-transaction-{payment.id}")
+        txn.append(f"w-insert_into_transaction-{payment.id}")
+        txn.append(f"w-update_payment-{payment.id}")
+    elif payment_intent.payment_order_exists:
+        if payment_intent.payment_charge_status_pending:
+            txn.append(f"w-insert_into_transaction-{payment.id}")
+    elif payment_intent.checkout_exists:
+        # Processing via checkout branch.
+        txn.append(f"r-{payment.id}")
+        txn.append(f"w-insert_into_transaction-{payment.id}")
+        txn.append(f"w-update_payment-{payment.id}")
+        txn.append(f"r-{checkout.id}")
+        txn.append(f"w-insert_into_order-{payment.order_id}")
+
+    return txn
+
+def saleor_stripe_handle_authorized_payment_intent_sim():
+    """
+    Example output:
+
+    """
+    payment_intents = [StripePaymentObj() for _ in range(10)]
+    for payment_intent in payment_intents:
+        result = saleor_stripe_handle_authorized_payment_intent_generator(payment_intent)
+        print(result)
+
 ### OTHER TRANSACTIONS ###
 
+# Skipped, too opaque
 def saleor_payment_authorize():
     """
     Transaction 2
     Purpose: Coordinate concurrent payment processing.
     saleor/payment/gateway.py#authorize
-    """
-
-def saleor_payment_order():
-    """
-    Transaction 3
-    Purpose: Coordinate concurrent payment processing.
-    saleor/graphql/order/mutations/orders.py#OrderCapture
+    https://github.com/saleor/saleor/blob/c738dcc49f65750fa39e6cd5c619f89e50184894/saleor/payment/gateway.py#L302
     """
 
 def saleor_payment_refund():
@@ -303,38 +690,6 @@ def saleor_payment_refund():
     Transaction 4
     Purpose: Coordinate concurrent payment processing.
     saleor/order/actions.py#create_refund_fulfillment
-    """
-
-def saleor_checkout_void_payment():
-    """
-    Transaction 5
-    Purpose: Coordinate concurrent payment processing.
-    saleor/checkout/complete_checkout.py#complete_checkout(with payment to void)
-    (complete_checkout_with_payment) https://github.com/saleor/saleor/blob/27eed6e93f79a73b81cf97465ba8552b66d31c40/saleor/checkout/complete_checkout.py#L1781
-    (_complete_checkout_fail_handler) https://github.com/saleor/saleor/blob/27eed6e93f79a73b81cf97465ba8552b66d31c40/saleor/checkout/complete_checkout.py#L1867
-    (gateway.paymend_refund_or_void) https://github.com/saleor/saleor/blob/2ee9490104e6b256899d90adcde9f7bdfbcecfe1/saleor/payment/gateway.py#L535
-    """
-
-def saleor_checkout_confirm_payment():
-    """
-    Transaction 6
-    Purpose: Coordinate concurrent checkout.
-    saleor/checkout/complete_checkout.py#complete_checkout(with payment to confirm)
-    https://github.com/saleor/saleor/blob/2ee9490104e6b256899d90adcde9f7bdfbcecfe1/saleor/payment/gateway.py#L452
-    """
-
-def saleor_cancel_fulfillment():
-    """
-    Transaction 7
-    Purpose: Coordinate concurrent fulfillment cancel.
-    saleor/graphql/order/mutations/fulfillments.py#FulfillmentCancel
-    """
-
-def saleor_fulfill_order():
-    """
-    Transaction 8
-    Purpose: Coordinate concurrent fulfillment.
-    saleor/graphql/order/mutations/fulfillments.py#OrderFulfill
     """
 
 def saleor_get_payment_adyen():
@@ -351,20 +706,6 @@ def saleor_get_checkout_adyen():
     saleor/payment/gateways/adyen/webhooks.py#get_checkout
     """
 
-def saleor_get_payment_stripe():
-    """
-    Transaction 11
-    Purpose: Coordinate concurrent payment processing.
-    saleor/payment/gateways/stripe/webhooks.py#get_payment
-    """
-
-def saleor_get_checkout_stripe():
-    """
-    Transaction 12
-    Purpose: Coordinate concurrent order processing.
-    saleor/payment/gateways/stripe/webhooks.py#get_checkout
-    """
-
 def saleor_get_delete_categories():
     """
     Transaction 13
@@ -378,14 +719,6 @@ def saleor_get_order_line_update():
     Purpose: Coordinate concurrent order updating.
     saleor/warehouse/management.py#OrderLineUpdate
     """
-
-def saleor_get_order_line_create():
-    """
-    Transaction 15
-    Purpose: Coordinate concurrent order updating.
-    saleor/graphql/order/mutations/orders.py#OrderLineCreate
-    """
-
 
 def main():
     # saleor_checkout_voucher_code_sim() # Transaction 1
