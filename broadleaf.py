@@ -1,44 +1,59 @@
 """
 Transaction simulations for BroadleafCommerce: https://github.com/BroadleafCommerce
 Uses PostgreSQL, MySQL
-Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good, the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto-sigmod22.pdf
+Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good, 
+the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto-sigmod22.pdf
 
 ### EXAMPLE OUTPUT ###
 
 Generating Broadleaf update cart simulation
-['r-cart(95)', 'w-order(41)']
-['r-cart(52)', 'w-order(44)']
-['r-cart(65)', 'w-order(19)']
-['r-cart(93)', 'w-order(42)']
-['r-cart(18)', 'w-order(69)']
+['r-cart(30)', 'w-order(8)']
+['r-cart(92)', 'w-order(19)']
+['r-cart(50)', 'w-order(6)']
+['r-cart(64)', 'w-order(44)']
+['r-cart(68)', 'w-order(63)']
 
 Generating Broadleaf rate item simulation
-['r-summary(70)', 'r-detail(12)', 'w-detail(12)/rating(1)', 'w-summary(70)/rating(1)']
-['r-summary(73)', 'r-detail(86)', 'w-detail(86)/rating(7)', 'w-summary(73)/rating(7)']
-['r-summary(47)', 'r-detail(66)', 'w-detail(66)/rating(3)', 'w-summary(47)/rating(3)']
-['r-summary(10)', 'r-detail(40)', 'w-detail(40)/rating(9)', 'w-summary(10)/rating(9)']
-['r-summary(5)', 'r-detail(9)', 'w-detail(9)/rating(0)', 'w-summary(5)/rating(0)']
+['r-summary(41)', 'r-detail(11)', 'w-detail(11)/rating(8)', 'w-summary(41)/rating(8)']
+['r-summary(99)', 'r-detail(89)', 'w-detail(89)/rating(3)', 'w-summary(99)/rating(3)']
+['r-summary(93)', 'r-detail(3)', 'w-detail(3)/rating(4)', 'w-summary(93)/rating(4)']
+['r-summary(77)', 'r-detail(3)', 'w-detail(3)/rating(8)', 'w-summary(77)/rating(8)']
+['r-summary(60)', 'r-detail(36)', 'w-detail(36)/rating(3)', 'w-summary(60)/rating(3)']
 
 Generating Broadleaf order payment simulation
-['w-amount(280.57)', 'w-unconfirmed type', 'w-orderPayment((381, 463))', 'w-customerPayment(463)']
-['w-amount(238.93)', 'w-unconfirmed type', 'w-orderPayment((639, 949))', 'w-customerPayment(949)']
-['w-amount(238.13)', 'w-unconfirmed type', 'w-orderPayment((49, 109))', 'w-customerPayment(109)']
-['w-amount(89.48)', 'w-unconfirmed type', 'w-orderPayment((914, 721))', 'w-customerPayment(721)']
-['w-amount(229.44)', 'w-unconfirmed type', 'w-orderPayment((609, 153))', 'w-customerPayment(153)']
+['w-amount(224.15)', 'w-unconfirmed type', 'w-orderPayment((162, 457))', 'w-customerPayment(457)']
+['w-amount(134.06)', 'w-unconfirmed type', 'w-orderPayment((861, 86))', 'w-customerPayment(86)']
+['w-amount(166.35)', 'w-unconfirmed type', 'w-orderPayment((891, 439))', 'w-customerPayment(439)']
+['w-amount(194.08)', 'w-unconfirmed type', 'w-orderPayment((358, 624))', 'w-customerPayment(624)']
+['w-amount(218.44)', 'w-unconfirmed type', 'w-orderPayment((937, 765))', 'w-customerPayment(765)']
 
 Generating Broadleaf save offer simulation
-['w-offerCode(554)', 'w-offer(554)']
-['w-offerCode(386)', 'w-offer(386)']
-['w-offerCode(896)', 'w-offer(896)']
-['w-offerCode(803)', 'w-offer(803)']
-['w-offerCode(52)', 'w-offer(52)']
+['w-offerCode(758)', 'w-offer(758)']
+['w-offerCode(345)', 'w-offer(345)']
+['w-offerCode(951)', 'w-offer(951)']
+['w-offerCode(539)', 'w-offer(539)']
+['w-offerCode(97)', 'w-offer(97)']
 
 Generating Broadleaf get offer simulation
-['r-offer(331)']
-['r-offer(683)']
-['r-offer(189)']
-['r-offer(519)']
-['r-offer(188)']
+['r-offer(934)']
+['r-offer(570)']
+['r-offer(665)']
+['r-offer(872)']
+['r-offer(99)']
+
+Generating Broadleaf get next id simulation
+['r-id(79)', 'w-id(79)', 'w-id(79)']
+['r-id(73)', 'w-id(73)', 'w-id(73)']
+['r-id(62)', 'w-id(62)', 'w-id(62)']
+['r-id(38)', 'w-id(38)']
+['r-id(44)', 'w-id(44)']
+
+Generating Broadleaf decrement SKU simulation
+['r-quantity(88)', 'w-quantity(88)', 'r-quantity(25)', 'w-quantity(25)', 'r-quantity(66)', 'w-quantity(66)', 'r-quantity(57)', 'w-quantity(57)']
+['r-quantity(27)', 'w-quantity(27)', 'r-quantity(36)', 'w-quantity(36)', 'r-quantity(60)', 'w-quantity(60)', 'r-quantity(14)', 'w-quantity(14)']
+['r-quantity(82)', 'w-quantity(82)', 'r-quantity(28)', 'w-quantity(28)', 'r-quantity(26)', 'w-quantity(26)', 'r-quantity(24)', 'w-quantity(24)']
+['r-quantity(47)', 'w-quantity(47)', 'r-quantity(45)', 'w-quantity(45)', 'r-quantity(53)', 'w-quantity(53)', 'r-quantity(94)', 'w-quantity(94)']
+['r-quantity(85)', 'w-quantity(85)', 'r-quantity(55)', 'w-quantity(55)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(38)', 'w-quantity(38)']
 """
 
 import numpy as np
@@ -152,10 +167,10 @@ def createOrderPaymentFromCustomerPayment(order, customerPayment, amount):
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
     
     Pseudocode:
-
     In: order_payments
-    orderPayment = createOrderPayment(order, customerPayment)
+
     TRANSACTION START
+    orderPayment = createOrderPayment(order, customerPayment)
     INSERT INTO order_payments VALUES (amount, UNCONFIRMED_TRANSACTION_TYPE, orderPayment, customerPayment)
     TRANSACTION COMMIT
     """
@@ -294,6 +309,43 @@ def get_next_id_sim(num_transactions: int):
         t = findNextID(np.random.choice(num_id_types), None)
         print(t)
 
+### Tranasaction 7 ###
+def decrementSKU(skuQuantities, context):
+    """
+    Purpose: Decrement SKU counts for each entry
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/inventory/service/InventoryServiceImpl.java#L203C5-L237C1
+
+    Pseudocode:
+    in: sku
+
+    TRANSACTION START
+    for entry in skuQuantities.entries:
+        SELECT quantity_available FROM sku WHERE sku_id = entry.sku_id
+        UPDATE sku SET quantity_available = quantity_available - entry.quantity WHERE sku_id = entry.sku_id
+    TRANSACTION COMMIT
+
+    For the simulation, we treat skuQuantities as a list of sku_ids.
+    """
+    t = Transaction()
+    for sku_id in skuQuantities:
+        t.append_read(f"quantity({sku_id})")
+        t.append_write(f"quantity({sku_id})")
+    return t
+
+def decrement_SKU_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['r-quantity(88)', 'w-quantity(88)', 'r-quantity(25)', 'w-quantity(25)', 'r-quantity(66)', 'w-quantity(66)', 'r-quantity(57)', 'w-quantity(57)']
+    ['r-quantity(27)', 'w-quantity(27)', 'r-quantity(36)', 'w-quantity(36)', 'r-quantity(60)', 'w-quantity(60)', 'r-quantity(14)', 'w-quantity(14)']
+    ['r-quantity(82)', 'w-quantity(82)', 'r-quantity(28)', 'w-quantity(28)', 'r-quantity(26)', 'w-quantity(26)', 'r-quantity(24)', 'w-quantity(24)']
+    ['r-quantity(47)', 'w-quantity(47)', 'r-quantity(45)', 'w-quantity(45)', 'r-quantity(53)', 'w-quantity(53)', 'r-quantity(94)', 'w-quantity(94)']
+    ['r-quantity(85)', 'w-quantity(85)', 'r-quantity(55)', 'w-quantity(55)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(38)', 'w-quantity(38)']
+    """
+    for _ in range(num_transactions):
+        skuQuantities = np.random.choice(100, 4)
+        t = decrementSKU(skuQuantities, None)
+        print(t)
 
 #######################
 ####   Simulation  ####
@@ -303,12 +355,14 @@ def main():
     """
     Generate Broadleaf transaction traces
     """
+    # Number of transactions per transaction type.
     num_transactions_1 = 5
     num_transactions_2 = 5
     num_transactions_3 = 5
     num_transactions_4 = 5
     num_transactions_5 = 5
     num_transactions_6 = 5
+    num_transactions_7 = 5
     
     # Extra space for formatting
     print()
@@ -341,6 +395,11 @@ def main():
     # Transaction 6
     print(f"Generating Broadleaf get next id simulation")
     get_next_id_sim(num_transactions_6)
+    print()
+
+    # Transaction 7
+    print("Generating Broadleaf decrement SKU simulation")
+    decrement_SKU_sim(num_transactions_7)
     print()
 
 if __name__ == "__main__":
