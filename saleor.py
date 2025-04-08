@@ -776,44 +776,68 @@ def saleor_stock_bulk_update_sim():
         result = saleor_stock_bulk_update_generator(stocks, fields_to_update)
         print(result)
 
-### OTHER TRANSACTIONS ###
-
-# Skipped, too opaque
-def saleor_payment_authorize():
+### Transaction 9 (Transaction 13 from Tang et al.) ###
+def saleor_delete_categories_generator(categories_ids: list) -> list[str]:
     """
-    Transaction 2
-    Purpose: Coordinate concurrent payment processing.
-    saleor/payment/gateway.py#authorize
-    https://github.com/saleor/saleor/blob/c738dcc49f65750fa39e6cd5c619f89e50184894/saleor/payment/gateway.py#L302
-    """
-
-def saleor_payment_refund():
-    """
-    Transaction 4
-    Purpose: Coordinate concurrent payment processing.
-    saleor/order/actions.py#create_refund_fulfillment
-    """
-
-def saleor_get_payment_adyen():
-    """
-    Transaction 9
-    Purpose: Coordinate concurrent payment processing.
-    saleor/payment/gateways/adyen/webhooks.py#get_payment
-    """
-
-def saleor_get_checkout_adyen():
-    """
-    Transaction 10
-    Purpose: Coordinate concurrent order processing.
-    saleor/payment/gateways/adyen/webhooks.py#get_checkout
-    """
-
-def saleor_get_delete_categories():
-    """
-    Transaction 13
     Purpose: Coordinate concurrent categories updating.
     saleor/product/utils/__init__.py#delete_categories
+
+    https://github.com/saleor/saleor/blob/1337f67b001927aac5c30854debdd1de8e6ccfcf/saleor/product/utils/__init__.py#L38C1-L67C76
+    PSEUDOCODE:
+    TRANSACTION START
+        categories = SELECT * FROM Category WHERE id IN categories_ids FOR UPDATE
+        products = SELECT * FROM Product WHERE category_id IN categories_ids
+
+        product_channel_listing = SELECT * FROM ProductChannelListing WHERE product_id IN ([101, 102, 103]);
+        UPDATE ProductChannelListing SET is_published = FALSE, published_at = NULL # Unpublish product listings for deleted categories
+        
+        DELETE FROM Category WHERE id IN categories_ids
+        
+        channel_ids = SELECT DISTINCT channel_id FROM ProductChannelListing WHERE product_id IN products
+    TRANSACTION COMMIT
     """
+    txn = []
+    
+    txn.append(f"r-{categories_ids}")
+
+    all_product_ids = []
+    
+    for category_id in categories_ids:
+        num_products = np.random.randint(1, 6)
+        product_ids = np.random.randint(100, 1000, size=num_products).tolist()
+        all_product_ids.append(product_ids)
+    txn.append(f"r-prefetch{all_product_ids}")
+    
+    txn.append(f"r-ProductChannelListings-{product_ids}")
+    
+    txn.append(f"w-UpdateProductChannelListing")
+    
+    txn.append(f"w-delete-{categories_ids}")
+    
+    txn.append(f"r-channel_id-{product_ids}")
+    
+    return txn
+
+def saleor_delete_categories_sim():
+    """
+    Example output:
+
+    ['r-[936, 637]', 'r-prefetch[[685, 478, 673, 114], [837, 701]]', 'r-ProductChannelListings-[837, 701]', 'w-UpdateProductChannelListing', 'w-delete-[936, 637]', 'r-channel_id-[837, 701]']
+    ['r-[481]', 'r-prefetch[[127, 915]]', 'r-ProductChannelListings-[127, 915]', 'w-UpdateProductChannelListing', 'w-delete-[481]', 'r-channel_id-[127, 915]']
+    ['r-[132, 107, 847, 802]', 'r-prefetch[[432], [890], [881, 977, 385, 937, 487], [790, 430, 757, 974, 472]]', 'r-ProductChannelListings-[790, 430, 757, 974, 472]', 'w-UpdateProductChannelListing', 'w-delete-[132, 107, 847, 802]', 'r-channel_id-[790, 430, 757, 974, 472]']
+    ['r-[481, 566, 533, 694]', 'r-prefetch[[885], [327, 697], [505, 523, 520, 264, 755], [202, 838]]', 'r-ProductChannelListings-[202, 838]', 'w-UpdateProductChannelListing', 'w-delete-[481, 566, 533, 694]', 'r-channel_id-[202, 838]']
+    ['r-[348, 213]', 'r-prefetch[[862], [185, 483, 570, 193, 694]]', 'r-ProductChannelListings-[185, 483, 570, 193, 694]', 'w-UpdateProductChannelListing', 'w-delete-[348, 213]', 'r-channel_id-[185, 483, 570, 193, 694]']
+    ['r-[282]', 'r-prefetch[[978, 323, 771]]', 'r-ProductChannelListings-[978, 323, 771]', 'w-UpdateProductChannelListing', 'w-delete-[282]', 'r-channel_id-[978, 323, 771]']
+    ['r-[53, 116, 375]', 'r-prefetch[[453, 713, 600, 702, 109], [122, 610, 501, 528, 691], [937, 905]]', 'r-ProductChannelListings-[937, 905]', 'w-UpdateProductChannelListing', 'w-delete-[53, 116, 375]', 'r-channel_id-[937, 905]']
+    ['r-[170, 163, 15]', 'r-prefetch[[922], [993, 808], [476, 687, 495]]', 'r-ProductChannelListings-[476, 687, 495]', 'w-UpdateProductChannelListing', 'w-delete-[170, 163, 15]', 'r-channel_id-[476, 687, 495]']
+    ['r-[694, 402]', 'r-prefetch[[811, 231, 204, 532, 275], [894, 507]]', 'r-ProductChannelListings-[894, 507]', 'w-UpdateProductChannelListing', 'w-delete-[694, 402]', 'r-channel_id-[894, 507]']
+    ['r-[467, 773, 401]', 'r-prefetch[[507, 832, 718], [659, 896, 130], [710, 266, 865, 200]]', 'r-ProductChannelListings-[710, 266, 865, 200]', 'w-UpdateProductChannelListing', 'w-delete-[467, 773, 401]', 'r-channel_id-[710, 266, 865, 200]']
+    """
+    num_txn = 10
+    for _ in range(num_txn):
+        categories_ids = np.random.randint(1, 1000, size=np.random.randint(1, 5)).tolist()
+        result = saleor_delete_categories_generator(categories_ids)
+        print(result)
 
 def main():
     # saleor_checkout_voucher_code_sim() # Transaction 1
@@ -823,7 +847,8 @@ def main():
     # saleor_order_fulfill_sim() # Transaction 5
     # saleor_order_lines_create_sim() # Transaction 6
     # saleor_stripe_handle_authorized_payment_intent_sim() # Transaction 7
-    saleor_stock_bulk_update_sim() # Transaction 8
+    # saleor_stock_bulk_update_sim() # Transaction 8
+    saleor_delete_categories_sim() # Transaction 9
 
 if __name__ == '__main__':
     main()
