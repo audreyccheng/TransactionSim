@@ -225,10 +225,10 @@ def save_offer_sim(num_transactions: int):
 def lookupOfferByCode(code):
     """
     Purpose: Retrieve offer corresponding to given code
-    Github: 
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/offer/service/OfferServiceImpl.java#L156C4-L163C6
 
-    Pseudocode: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/offer/service/OfferServiceImpl.java#L156C4-L163C6
-    
+    Pseudocode: 
+
     In: offers
     TRANSACTION START
     SELECT offer FROM offers WHERE offerCode == code
@@ -253,6 +253,48 @@ def get_offer_sim(num_transactions: int):
         transaction = lookupOfferByCode(np.random.choice(range(num_offer_codes)))
         print(transaction)
 
+### Transaction 6 ###
+def findNextID(idType, batchSize):
+    """
+    Purpose: Generate the next id based on idType and batchSize
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/common/src/main/java/org/broadleafcommerce/common/id/service/IdGenerationServiceImpl.java#L49C5-L80C6
+
+    Pseudocode:
+    in: idMap
+
+    TRANSACTION START
+    id = SELECT id FROM idMap WHERE type=idType
+    if (id == NULL):
+        id = new ID(idType, batchSize)
+        INSERT INTO idMap VALUES (id, idType)
+    ret = id.nextID++
+    id.batchsize--
+    UPDATE idMap SET id=id WHERE type=idType
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    t.append_read(f"id({idType})")
+    if (np.random.choice(2) == 1):
+        t.append_write(f"id({idType})")
+    t.append_write(f"id({idType})")
+    return t
+
+def get_next_id_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['r-id(36)', 'w-id(36)', 'w-id(36)']
+    ['r-id(83)', 'w-id(83)']
+    ['r-id(16)', 'w-id(16)']
+    ['r-id(32)', 'w-id(32)']
+    ['r-id(88)', 'w-id(88)', 'w-id(88)']
+    """
+    num_id_types = 100
+    for _ in range(num_transactions):
+        t = findNextID(np.random.choice(num_id_types), None)
+        print(t)
+
+
 #######################
 ####   Simulation  ####
 #######################
@@ -266,6 +308,7 @@ def main():
     num_transactions_3 = 5
     num_transactions_4 = 5
     num_transactions_5 = 5
+    num_transactions_6 = 5
     
     # Extra space for formatting
     print()
@@ -293,6 +336,11 @@ def main():
     # Transaction 5
     print(f"Generating Broadleaf get offer simulation")
     get_offer_sim(num_transactions_5)
+    print()
+
+    # Transaction 6
+    print(f"Generating Broadleaf get next id simulation")
+    get_next_id_sim(num_transactions_6)
     print()
 
 if __name__ == "__main__":
