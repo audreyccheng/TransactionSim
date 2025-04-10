@@ -64,7 +64,7 @@ from transaction import Transaction
 #################################
 
 ### Transaction 1 ###
-def doFilterInternalUnlessIgnored(request: tuple[int, int], response, chain):
+def do_filter_internal_unless_ignored(request: tuple[int, int], response, chain):
     """
     Purpose: Update cart with new order
     Source code: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework-web/src/main/java/org/broadleafcommerce/core/web/order/security/CartStateFilter.java#L96C1-L126C64
@@ -108,11 +108,11 @@ def update_order_sim(num_transactions: int):
     for _ in range(num_transactions):
         cart_id = np.random.choice(cart_ids)
         order_id = np.random.choice(order_ids)
-        transaction = doFilterInternalUnlessIgnored((cart_id, order_id), None, None)
+        transaction = do_filter_internal_unless_ignored((cart_id, order_id), None, None)
         print(transaction)
 
 ### Transaction 2 ###
-def rateItem(itemId, type, customer, rating):
+def rate_item(item_id, type, customer, rating):
     """
     Purpose: Add a new rating to item
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/rating/service/RatingServiceImpl.java#L73C1-L92C6
@@ -134,13 +134,13 @@ def rateItem(itemId, type, customer, rating):
     For simplicity, we treat the itemID as the unique identifier for the item. 
     """
     t = Transaction()
-    t.append_read(f"summary({itemId})")
+    t.append_read(f"summary({item_id})")
     t.append_read(f"detail({customer})")
     t.append_write(f"detail({customer})/rating({rating})")
-    t.append_write(f"summary({itemId})/rating({rating})")
+    t.append_write(f"summary({item_id})/rating({rating})")
     return t
 
-def rateItem_sim(num_transactions: int):
+def rate_item_sim(num_transactions: int):
     """
     Example output:
 
@@ -154,14 +154,14 @@ def rateItem_sim(num_transactions: int):
     num_customers = 100
     ratings = range(10)
     for _ in range(num_transactions):
-        transaction = rateItem(np.random.choice(range(num_items)),
+        transaction = rate_item(np.random.choice(range(num_items)),
                                None,
                                np.random.choice(range(num_customers)),
                                np.random.choice(ratings))
         print(transaction)
 
 ### Transaction 3 ###
-def createOrderPaymentFromCustomerPayment(order, customerPayment, amount):
+def create_order_payment_from_customer_payment(order, customer_payment, amount):
     """
     Purpose: Save order payment details
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
@@ -175,12 +175,12 @@ def createOrderPaymentFromCustomerPayment(order, customerPayment, amount):
     TRANSACTION COMMIT
     """
     UNCONFIRMED_TRANSACTION_TYPE = "unconfirmed type"
-    orderPayment = (order, customerPayment)
+    order_payment = (order, customer_payment)
     t = Transaction()
     t.append_write(f"amount({amount})")
     t.append_write(UNCONFIRMED_TRANSACTION_TYPE)
-    t.append_write(f"orderPayment({orderPayment})")
-    t.append_write(f"customerPayment({customerPayment})")
+    t.append_write(f"orderPayment({order_payment})")
+    t.append_write(f"customerPayment({customer_payment})")
     return t
 
 def order_payment_sim(num_transactions: int):
@@ -196,13 +196,13 @@ def order_payment_sim(num_transactions: int):
     num_orders = 1000
     num_customerPayment = 1000
     for _ in range(num_transactions):
-        transaction = createOrderPaymentFromCustomerPayment(np.random.choice(range(num_orders)),
-                                                            np.random.choice(range(num_customerPayment)),
-                                                            round(np.random.normal(200, 50), 2))
-        print(transaction)
+        t = create_order_payment_from_customer_payment(np.random.choice(range(num_orders)),
+                                                       np.random.choice(range(num_customerPayment)),
+                                                       round(np.random.normal(200, 50), 2))
+        print(t)
 
 ### Transaction 4 ###
-def saveOfferCode(offerCode):
+def save_offer_code(offer_code):
     """
     Purpose: Save offer code
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/offer/service/OfferServiceImpl.java#L140C1-L145C6
@@ -217,8 +217,8 @@ def saveOfferCode(offerCode):
     For simplicity, we represent the offer and offerCode with the same index.
     """
     t = Transaction()
-    t.append_write(f"offerCode({offerCode})")
-    t.append_write(f"offer({offerCode})")
+    t.append_write(f"offerCode({offer_code})")
+    t.append_write(f"offer({offer_code})")
     return t
 
 def save_offer_sim(num_transactions: int):
@@ -233,11 +233,11 @@ def save_offer_sim(num_transactions: int):
     """
     num_offer_codes = 1000
     for _ in range(num_transactions):
-        transaction = saveOfferCode(np.random.choice(range(num_offer_codes)))
+        transaction = save_offer_code(np.random.choice(range(num_offer_codes)))
         print(transaction)
 
 ### Transaction 5 ###
-def lookupOfferByCode(code):
+def lookup_offer_by_code(code):
     """
     Purpose: Retrieve offer corresponding to given code
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/offer/service/OfferServiceImpl.java#L156C4-L163C6
@@ -265,11 +265,11 @@ def get_offer_sim(num_transactions: int):
     """
     num_offer_codes = 1000
     for _ in range(num_transactions):
-        transaction = lookupOfferByCode(np.random.choice(range(num_offer_codes)))
+        transaction = lookup_offer_by_code(np.random.choice(range(num_offer_codes)))
         print(transaction)
 
 ### Transaction 6 ###
-def findNextID(idType, batchSize):
+def find_next_id(id_type, batch_size):
     """
     Purpose: Generate the next id based on idType and batchSize
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/common/src/main/java/org/broadleafcommerce/common/id/service/IdGenerationServiceImpl.java#L49C5-L80C6
@@ -288,10 +288,10 @@ def findNextID(idType, batchSize):
     TRANSACTION COMMIT
     """
     t = Transaction()
-    t.append_read(f"id({idType})")
+    t.append_read(f"id({id_type})")
     if (np.random.choice(2) == 1):
-        t.append_write(f"id({idType})")
-    t.append_write(f"id({idType})")
+        t.append_write(f"id({id_type})")
+    t.append_write(f"id({id_type})")
     return t
 
 def get_next_id_sim(num_transactions: int):
@@ -306,11 +306,11 @@ def get_next_id_sim(num_transactions: int):
     """
     num_id_types = 100
     for _ in range(num_transactions):
-        t = findNextID(np.random.choice(num_id_types), None)
+        t = find_next_id(np.random.choice(num_id_types), None)
         print(t)
 
 ### Tranasaction 7 ###
-def decrementSKU(skuQuantities, context):
+def decrement_sku(sku_quantities, context):
     """
     Purpose: Decrement SKU counts for each entry
     Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/inventory/service/InventoryServiceImpl.java#L203C5-L237C1
@@ -327,7 +327,7 @@ def decrementSKU(skuQuantities, context):
     For the simulation, we treat skuQuantities as a list of sku_ids.
     """
     t = Transaction()
-    for sku_id in skuQuantities:
+    for sku_id in sku_quantities:
         t.append_read(f"quantity({sku_id})")
         t.append_write(f"quantity({sku_id})")
     return t
@@ -343,8 +343,8 @@ def decrement_SKU_sim(num_transactions: int):
     ['r-quantity(85)', 'w-quantity(85)', 'r-quantity(55)', 'w-quantity(55)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(38)', 'w-quantity(38)']
     """
     for _ in range(num_transactions):
-        skuQuantities = np.random.choice(100, 4)
-        t = decrementSKU(skuQuantities, None)
+        sku_quantities = np.random.choice(100, 4)
+        t = decrement_sku(sku_quantities, None)
         print(t)
 
 #######################
@@ -374,7 +374,7 @@ def main():
 
     # Transaction 2
     print(f"Generating Broadleaf rate item simulation")
-    rateItem_sim(num_transactions_2)
+    rate_item_sim(num_transactions_2)
     print()
 
     # Transaction 3
