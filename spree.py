@@ -104,9 +104,8 @@ def spree_checkout_controller_generator():
     Validation-based transaction.
     Purpose: Coordinate concurrent checkout.
     app/controllers/spree/checkout_controller.rb:101
-    
-    https://github.com/spree/spree/blob/840041ef5747387d3752c4d0acf4e38ff8a35292/frontend/app/controllers/spree/checkout_controller.rb#L95-L107
-    Mentioned by Project Concerto here https://github.com/spree/spree/issues/10733
+
+    https://github.com/spree/spree/blob/a436948268d2626ed1bc8304d1a40e3f5b792992/storefront/spec/controllers/spree/checkout_controller_spec.rb#L641C7-L697C8
     PSEUDOCODE:
     In:
     TRANSACTION START
@@ -178,7 +177,7 @@ def spree_find_order_generator():
     Purpose: Coordinate concurrent checkout.
     Spree::Api::V1::OrdersController#find_order
     """
-    
+
 # Skipping, cannot find in code
 def spree_stock_item_checkout_generator():
     """
