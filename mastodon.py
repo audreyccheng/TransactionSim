@@ -188,6 +188,39 @@ def call_sim(num_transactions: int):
         t = call(np.random.choice(1000), None, [np.random.choice(10) for _ in range(int(round(np.random.normal(3, 1))))])
         print(t)
 
+### Transaction 5 ###
+def process_status():
+    """
+    Purpose: Update activity with new status
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/lib/activitypub/activity/create.rb#L42C3-L69C6
+
+    Pseudocode:
+    In: status, new_status
+
+    # Miscellaneous processing
+    TRANSACTION START
+    INSERT INTO status VALUES new_status
+    TRANSACTION COMMIT
+    # Miscellaneous processing
+    """
+    t = Transaction()
+    new_status = np.random.choice(1000)
+    t.append_write(f"status({new_status})")
+    return t
+
+def process_status_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['w-status(585)']
+    ['w-status(83)']
+    ['w-status(660)']
+    ['w-status(805)']
+    ['w-status(315)']
+    """
+    for _ in range(num_transactions):
+        t = process_status()
+        print(t)
 
 #######################
 ####   Simulation  ####
@@ -201,7 +234,7 @@ def main():
     num_transactions_2 = 5
     num_transactions_3 = 5
     num_transactions_4 = 5
-    # num_transactions_5 = 5
+    num_transactions_5 = 5
     # num_transactions_6 = 5
     # num_transactions_7 = 5 
 
@@ -226,6 +259,11 @@ def main():
     # Transaction 4
     print("Generating Mastodon call simulation")
     call_sim(num_transactions_4)
+    print()
+
+    # Transaction 5
+    print("Generating Mastodon process status simulation")
+    process_status_sim(num_transactions_5)
     print()
     
 if __name__ == "__main__":
