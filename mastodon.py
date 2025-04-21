@@ -7,32 +7,46 @@ the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto
 ### EXAMPLE OUTPUT ###
 
 Generating Mastodon increment counter cache simulation
-['w-cached_tallies(92, 66)', 'r-poll(92)', 'w-cached_tallies(92, 66)']
-['w-cached_tallies(98, 24)']
-['w-cached_tallies(79, 16)']
-['w-cached_tallies(17, 93)']
-['w-cached_tallies(32, 66)']
+['w-cached_tallies(140, 63)', 'r-poll(140)', 'w-cached_tallies(140, 63)']
+['w-cached_tallies(172, 99)', 'r-poll(172)', 'w-cached_tallies(172, 99)']
+['w-cached_tallies(17, 76)']
+['w-cached_tallies(166, 61)']
+['w-cached_tallies(123, 27)', 'r-poll(123)', 'w-cached_tallies(123, 27)']
 
 Generating Mastodon create account simulation
-['w-account(10)']
-['w-account(860)']
-['w-account(338)']
-['w-account(380)']
-['w-account(550)']
+['w-account(536)']
+['w-account(366)']
+['w-account(627)']
+['w-account(824)']
+['w-account(111)']
 
 Generating Mastodon update account simulation
-['w-account(513)']
-['w-account(308)']
-['w-account(948)']
-['w-account(848)']
-['w-account(835)']
+['w-account(845)']
+['w-account(225)']
+['w-account(602)']
+['w-account(161)']
+['w-account(924)']
 
 Generating Mastodon call simulation
-['w-[account(138), choice(9)]', 'w-[account(138), choice(0)]']
-['w-[account(796), choice(6)]', 'w-[account(796), choice(7)]', 'w-[account(796), choice(6)]']
-['w-[account(386), choice(9)]', 'w-[account(386), choice(7)]', 'w-[account(386), choice(3)]']
-['w-[account(231), choice(1)]', 'w-[account(231), choice(3)]']
-['w-[account(837), choice(9)]', 'w-[account(837), choice(9)]', 'w-[account(837), choice(0)]']
+['w-[account(2), choice(3)]', 'w-[account(2), choice(4)]', 'w-[account(2), choice(0)]', 'w-[account(2), choice(5)]', 'w-[account(2), choice(3)]']
+['w-[account(626), choice(6)]', 'w-[account(626), choice(1)]']
+['w-[account(307), choice(6)]', 'w-[account(307), choice(2)]', 'w-[account(307), choice(4)]']
+['w-[account(249), choice(8)]', 'w-[account(249), choice(8)]', 'w-[account(249), choice(5)]']
+['w-[account(342), choice(3)]', 'w-[account(342), choice(1)]', 'w-[account(342), choice(6)]']
+
+Generating Mastodon process status simulation
+['w-status(129)']
+['w-status(566)']
+['w-status(220)']
+['w-status(191)']
+['w-status(860)']
+
+Generating Mastodon process emoji simulation
+['w-emoji(204)']
+['w-emoji(660)']
+['w-emoji(872)']
+['w-emoji(968)']
+['w-emoji(699)']
 """
 
 import numpy as np
@@ -222,6 +236,40 @@ def process_status_sim(num_transactions: int):
         t = process_status()
         print(t)
 
+### Transaction 6 ###
+def process_emoji(tag):
+    """
+    Purpose: Process emoji
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/lib/activitypub/activity/create.rb#L254C1-L272C6
+
+    Pseudocode:
+    In: emojis
+    # Check if emoji already exists and return if so
+    # Otherwise:
+    emoji = new_emoji()
+    TRANSACTION START
+    INSERT INTO emojis VALUES emoji
+    TRANSACTION COMMIT
+    """
+    emoji = np.random.choice(1000)
+    t = Transaction()
+    t.append_write(f"emoji({emoji})")
+    return t
+
+def process_emoji_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['w-emoji(204)']
+    ['w-emoji(660)']
+    ['w-emoji(872)']
+    ['w-emoji(968)']
+    ['w-emoji(699)']
+    """
+    for _ in range(num_transactions):
+        t = process_emoji(None)
+        print(t)
+
 #######################
 ####   Simulation  ####
 #######################
@@ -235,7 +283,7 @@ def main():
     num_transactions_3 = 5
     num_transactions_4 = 5
     num_transactions_5 = 5
-    # num_transactions_6 = 5
+    num_transactions_6 = 5
     # num_transactions_7 = 5 
 
     # Extra space for formatting
@@ -265,6 +313,11 @@ def main():
     print("Generating Mastodon process status simulation")
     process_status_sim(num_transactions_5)
     print()
-    
+
+    # Transaction 6
+    print("Generating Mastodon process emoji simulation")
+    process_emoji_sim(num_transactions_6)
+    print()
+
 if __name__ == "__main__":
     main()
