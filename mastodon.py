@@ -7,46 +7,53 @@ the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto
 ### EXAMPLE OUTPUT ###
 
 Generating Mastodon increment counter cache simulation
-['w-cached_tallies(140, 63)', 'r-poll(140)', 'w-cached_tallies(140, 63)']
-['w-cached_tallies(172, 99)', 'r-poll(172)', 'w-cached_tallies(172, 99)']
-['w-cached_tallies(17, 76)']
-['w-cached_tallies(166, 61)']
-['w-cached_tallies(123, 27)', 'r-poll(123)', 'w-cached_tallies(123, 27)']
+['w-cached_tallies(7, 82)']
+['w-cached_tallies(169, 83)', 'r-poll(169)', 'w-cached_tallies(169, 83)']
+['w-cached_tallies(102, 32)', 'r-poll(102)', 'w-cached_tallies(102, 32)']
+['w-cached_tallies(36, 2)', 'r-poll(36)', 'w-cached_tallies(36, 2)']
+['w-cached_tallies(191, 17)']
 
 Generating Mastodon create account simulation
-['w-account(536)']
-['w-account(366)']
-['w-account(627)']
-['w-account(824)']
-['w-account(111)']
+['w-account(516)']
+['w-account(126)']
+['w-account(36)']
+['w-account(110)']
+['w-account(93)']
 
 Generating Mastodon update account simulation
-['w-account(845)']
-['w-account(225)']
-['w-account(602)']
-['w-account(161)']
-['w-account(924)']
+['w-account(341)']
+['w-account(992)']
+['w-account(611)']
+['w-account(58)']
+['w-account(651)']
 
 Generating Mastodon call simulation
-['w-[account(2), choice(3)]', 'w-[account(2), choice(4)]', 'w-[account(2), choice(0)]', 'w-[account(2), choice(5)]', 'w-[account(2), choice(3)]']
-['w-[account(626), choice(6)]', 'w-[account(626), choice(1)]']
-['w-[account(307), choice(6)]', 'w-[account(307), choice(2)]', 'w-[account(307), choice(4)]']
-['w-[account(249), choice(8)]', 'w-[account(249), choice(8)]', 'w-[account(249), choice(5)]']
-['w-[account(342), choice(3)]', 'w-[account(342), choice(1)]', 'w-[account(342), choice(6)]']
+['w-[account(106), choice(2)]', 'w-[account(106), choice(2)]']
+['w-[account(109), choice(4)]', 'w-[account(109), choice(4)]', 'w-[account(109), choice(2)]']
+['w-[account(342), choice(1)]', 'w-[account(342), choice(3)]']
+['w-[account(44), choice(4)]', 'w-[account(44), choice(8)]']
+['w-[account(535), choice(2)]', 'w-[account(535), choice(8)]', 'w-[account(535), choice(4)]', 'w-[account(535), choice(4)]']
 
 Generating Mastodon process status simulation
-['w-status(129)']
-['w-status(566)']
-['w-status(220)']
-['w-status(191)']
-['w-status(860)']
+['w-status(916)']
+['w-status(459)']
+['w-status(970)']
+['w-status(683)']
+['w-status(719)']
 
 Generating Mastodon process emoji simulation
-['w-emoji(204)']
-['w-emoji(660)']
-['w-emoji(872)']
-['w-emoji(968)']
-['w-emoji(699)']
+['w-emoji(60)']
+['w-emoji(949)']
+['w-emoji(173)']
+['w-emoji(698)']
+['w-emoji(620)']
+
+Generating Mastodon create backup simulation
+['w-backup(671)']
+['w-backup(573)']
+['w-backup(54)']
+['w-backup(261)']
+['w-backup(101)']
 """
 
 import numpy as np
@@ -270,6 +277,38 @@ def process_emoji_sim(num_transactions: int):
         t = process_emoji(None)
         print(t)
 
+### Transaction 7 ###
+def create_backup():
+    """
+    Purpose: Create a backup
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/controllers/settings/exports_controller.rb#L16C1-L27C6
+    
+    Pseudocode:
+    In: backups
+    backup = new_backup()
+    TRANSACTION START
+    INSERT INTO backups VALUES backup
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    backup_id = np.random.choice(1000)
+    t.append_write(f"backup({backup_id})")
+    return t
+
+def create_backup_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['w-backup(671)']
+    ['w-backup(573)']
+    ['w-backup(54)']
+    ['w-backup(261)']
+    ['w-backup(101)']
+    """
+    for _ in range(num_transactions):
+        t = create_backup()
+        print(t)
+
 #######################
 ####   Simulation  ####
 #######################
@@ -284,7 +323,7 @@ def main():
     num_transactions_4 = 5
     num_transactions_5 = 5
     num_transactions_6 = 5
-    # num_transactions_7 = 5 
+    num_transactions_7 = 5 
 
     # Extra space for formatting
     print()
@@ -317,6 +356,11 @@ def main():
     # Transaction 6
     print("Generating Mastodon process emoji simulation")
     process_emoji_sim(num_transactions_6)
+    print()
+
+    # Transaction 7
+    print("Generating Mastodon create backup simulation")
+    create_backup_sim(num_transactions_7)
     print()
 
 if __name__ == "__main__":
