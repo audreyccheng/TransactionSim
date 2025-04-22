@@ -129,6 +129,91 @@ def spree_checkout_controller_sim(num_txn: int):
         result = spree_checkout_controller_generator(order_id, input_data)
         print(result)
 
+### Transaction 3 ###
+def spree_fulfillment_changer_generator(order_id: int,
+        variant_id: int,
+        current_shipment_id: int,
+        desired_shipment_id: int,
+        current_stock_location_id: int,
+        desired_stock_location_id: int,
+        current_on_hand_quantity: int,
+        restock_quantity: int,
+        unstock_quantity: int,
+        new_on_hand_quantity: int
+    ) -> list[str]:
+    """
+    https://github.com/spree/spree/blob/249aa157ab33d94cffff779d66039c1b4580f6f4/core/app/models/spree/fulfilment_changer.rb#L41C5-L51C1
+    
+    PSEUDOCODE:
+    In: current_stock_location, desired_stock_location, order, variant, shipment, 
+        current_on_hand_quantity, unstock_quantity
+    TRANSACTION START
+
+    SELECT SUM(quantity) FROM inventory_units WHERE shipment_id = current_shipment.id AND variant_id = variant.id
+    AND state IN ('on_hand', 'backordered');
+
+    IF order.state = 'complete' AND current_stock_location.id != desired_stock_location.id
+        -- restock
+        UPDATE stock_items SET count_on_hand = count_on_hand + restock_quantity WHERE stock_location_id = current_stock_location.id AND variant_id = variant.id
+
+        -- unstock
+        UPDATE stock_items SET count_on_hand = count_on_hand - unstock_quantity WHERE stock_location_id = desired_stock_location.id AND variant_id = variant.id
+
+    -- move inventory units between shipments
+    -- part 1: update desired shipment
+    SELECT unit FROM inventory_units WHERE shipment_id = desired_shipment.id AND variant_id = variant.id
+    if unit is null: -- this represents a find_or_create
+        INSERT INTO inventory_units (shipment_id, variant_id, state) VALUES (desired_shipment.id, variant.id, 'on_hand')
+    UPDATE inventory_units SET quantity = quantity + new_on_hand_quantity
+        WHERE shipment_id = desired_shipment.id AND variant_id = variant.id AND state = 'on_hand'
+
+    if current_on_hand_quantity > new_on_hand_quantity:
+        UPDATE inventory_units SET quantity = quantity - (current_on_hand_quantity - new_on_hand_quantity)
+        WHERE shipment_id = current_shipment.id AND variant_id = variant.id AND state = 'on_hand';
+    if unit is null: -- this represents a find_or_create
+        INSERT INTO inventory_units (shipment_id, variant_id, state) VALUES (desired_shipment.id, variant.id, 'backordered')
+        UPDATE inventory_units SET quantity = quantity + new_backordered_quantity
+            WHERE shipment_id = desired_shipment.id AND variant_id = variant.id AND state = 'backordered'
+
+    -- part 2: update current shipment
+    UPDATE inventory_units SET quantity_left = quantity - reduced_quantity WHERE state = 'backordered'
+    if quantity_left > 0:
+        UPDATE inventory_units SET quantity_left = quantity - reduced_quantity WHERE state = 'on_hand'
+
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+
+    # Read current quantity in current shipment
+    t.append_read(f"inventory_units-shipment_id({current_shipment_id})-variant_id({variant_id})")
+
+    # Conditionally update stock counts
+    t.append_conditional("order.state == 'complete' AND current != desired")
+
+    t.append_write(f"restock-stock_item-location({current_stock_location_id})-variant({variant_id})-qty(+{restock_quantity})")
+    t.append_write(f"unstock-stock_item-location({desired_stock_location_id})-variant({variant_id})-qty(-{unstock_quantity})")
+
+    # Desired shipment on_hand unit update
+    t.append_find_or_create(f"inventory_unit-shipment({desired_shipment_id})-state('on_hand')-variant({variant_id})")
+    t.append_write(f"update-inventory_unit-qty(+{new_on_hand_quantity})")
+
+    # Desired shipment backordered update (if needed)
+    backorder_qty = current_on_hand_quantity - new_on_hand_quantity
+    if backorder_qty > 0:
+        t.append_find_or_create(f"inventory_unit-shipment({desired_shipment_id})-state('backordered')-variant({variant_id})")
+        t.append_write(f"update-inventory_unit-qty(+{backorder_qty})")
+
+    # Reduce current shipment units
+    t.append_iterate("inventory_units", f"shipment({current_shipment_id})-variant({variant_id})")
+
+    t.append_conditional("unit.quantity > reduced_quantity")
+    t.append_write("unit.quantity -= reduced_quantity")
+
+    t.append_else()
+    t.append_delete("inventory_unit")
+
+    return t
+
 ### Other Transactions
 
 def spree_find_order_by_token_or_user_generator():
