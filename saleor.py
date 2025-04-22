@@ -7,6 +7,7 @@
 
 import numpy as np
 import datetime
+from transaction import Transaction
 
 class Voucher: 
     def __init__(self):
@@ -74,7 +75,7 @@ class Order:
         self.status: str = "pending"
         self.exists: bool = np.random.binomial(1, 0.5)
 
-class Transaction: 
+class SaleorTransaction: 
     def __init__(self):
         self.kind: str = np.random.choice(["ACTION_TO_CONFIRM", "CAPTURE", "REFUND", "VOID"])
         self.pk: int = np.random.choice(range(100))
@@ -82,6 +83,10 @@ class Transaction:
 class Site:
     def __init__(self):
         self.pk: int = np.random.choice(range(100))
+
+#################################
+####   Simulator functions   ####
+#################################
 
 ### Transaction 1 (Transaction 1 from Tang et al.) ###
 def saleor_checkout_voucher_code_generator(voucher_code: int) -> list[str]:
@@ -121,16 +126,15 @@ def saleor_checkout_voucher_code_generator(voucher_code: int) -> list[str]:
 
     TRANSACTION COMMIT
     """
-    txn = []
-
+    t = Transaction()
     with_lock = True
     
     if voucher_code is not None:
         # Get code using voucher_code
         code = Code()
-        txn.append(f"r-{code.voucher_id}")
+        t.append_read(f"voucher_id({code.voucher_id})")
         if code.voucher_id == 0: # if the code DNE
-            return txn
+            return t
 
         # Get voucher using code.voucher_id
         voucher = Voucher()
@@ -138,40 +142,39 @@ def saleor_checkout_voucher_code_generator(voucher_code: int) -> list[str]:
         if voucher.is_voucher_usage_increased:
             voucher_invalid = np.random.binomial(1, 0.5) # Chance of voucher being invalid after fully being used (deactivated)
             if voucher_invalid:
-                txn.append(f"r-{voucher_code}")
-                return txn
-        txn.append(f"r-{voucher_code}")
+                t.append_read(f"vouncher_code({voucher_code})")
+                return t
+        t.append_read(f"vouncher_code({voucher_code})")
         
         if voucher.usage_limit > 0 and with_lock:
-            txn.append(f"r-{code.voucher_id}")
+            t.append_read(f"voucher_id({code.voucher_id})")
         
     # Increase voucher usage
     if voucher.usage_limit:
-        txn.append(f"w-{code.used + 1}")
+        t.append_write(f"usage_limit({code.used + 1})")
     if voucher.apply_once_per_customer:
-        txn.append(f"w-{voucher_code}")
+        t.append_write(f"apply_once({voucher_code})")
     if voucher.single_use:
-        txn.append(f"w-{False}")
-    return txn
+        t.append_write(f"single_use({False})")
+    return t
 
 def saleor_checkout_voucher_code_sim():
     """
     Example output:
 
-    ['r-76', 'r-32', 'r-76', 'w-6', 'w-32', 'w-False']
-    ['r-22', 'r-33']
-    ['r-23', 'r-15', 'r-23', 'w-4']
-    ['r-53', 'r-43']
-    ['r-31', 'r-47', 'r-31', 'w-4']
-    ['r-34', 'r-29']
-    ['r-58', 'r-83', 'r-58', 'w-6', 'w-False']
-    ['r-62', 'r-27', 'r-62', 'w-5', 'w-27']
-    ['r-42', 'r-35', 'r-42', 'w-10', 'w-35']
-    ['r-21', 'r-96', 'r-21', 'w-8']
+    ['r-voucher_id(39)', 'r-vouncher_code(92)', 'r-voucher_id(39)', 'w-usage_limit(5)', 'w-apply_once(92)']
+    ['r-voucher_id(93)', 'r-vouncher_code(7)', 'r-voucher_id(93)', 'w-usage_limit(4)', 'w-apply_once(7)']
+    ['r-voucher_id(70)', 'r-vouncher_code(12)', 'r-voucher_id(70)', 'w-usage_limit(4)', 'w-single_use(False)']
+    ['r-voucher_id(65)', 'r-vouncher_code(64)', 'r-voucher_id(65)', 'w-usage_limit(8)']
+    ['r-voucher_id(62)', 'r-vouncher_code(1)']
+    ['r-voucher_id(80)', 'r-vouncher_code(47)', 'r-voucher_id(80)', 'w-usage_limit(4)']
+    ['r-voucher_id(92)', 'r-vouncher_code(88)', 'r-voucher_id(92)', 'w-usage_limit(9)', 'w-apply_once(88)']
+    ['r-voucher_id(27)', 'r-vouncher_code(80)']
+    ['r-voucher_id(55)', 'r-vouncher_code(48)']
     """
     voucher_codes = list(range(100))
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         voucher_code = np.random.choice(voucher_codes)
         result = saleor_checkout_voucher_code_generator(voucher_code)
         print(result)
@@ -199,14 +202,14 @@ def saleor_checkout_payment_process_generator(checkout_pk: int) -> list[str]:
     ie. there's some redundant code across helper fns that I consolidated)
     try:
         if payment.to_confirm: (default is False)
-            txn = Select * from Transactions where kind=ACTION_TO_CONFIRM LIMIT 1 (get_action_to_confirm)
+            t = Select * from Transactions where kind=ACTION_TO_CONFIRM LIMIT 1 (get_action_to_confirm)
         response, error = _fetch_gateway_response
         if response: 
             update_payment (save) –> write
         if gateway_response.transaction_already_processed:
-            txn = Select * from Transactions where ... DESCENDING LIMIT 1 (get_already_processed_transaction)
+            t = Select * from Transactions where ... DESCENDING LIMIT 1 (get_already_processed_transaction)
         else: 
-            txn = "create_transaction" (not r/w)
+            t = "create_transaction" (not r/w)
     except error:
         _complete_checkout_fail_handler
     
@@ -232,45 +235,45 @@ def saleor_checkout_payment_process_generator(checkout_pk: int) -> list[str]:
         
         if payment: # called with transaction_id = None
             if payment.can_refund():
-                txn = select * from transactions where kind=kind DESC LIMIT 1
-                if txn is None: TRANSACTION ABORT
+                t = select * from transactions where kind=kind DESC LIMIT 1
+                if t is None: TRANSACTION ABORT
                 select * from transactions where payment_id=payment_id and kind=kind
                 TRANSACTION COMMIT
             elif payment.can_void():
-                txn = select * from transactions where kind=kind DESC LIMIT 1
-                if txn is None: TRANSACTION ABORT
+                t = select * from transactions where kind=kind DESC LIMIT 1
+                if t is None: TRANSACTION ABORT
                 select * from transactions where payment_id=payment_id and kind=kind
                 TRANSACTION COMMIT
                 
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
 
     checkout = Checkout()
-    txn.append(f"r-{checkout_pk}")
+    t.append_read(f"checkout_pk({checkout_pk})")
     if not checkout.exists:
-        txn.append(f"r-order{checkout_pk}")
-        return txn
+        t.append_read(f"checkout_pk({checkout_pk})")
+        return t
     
     payment = Payment()
-    txn.append(f"r-{payment.id}")
+    t.append_read(f"payment_id({payment.id})")
     try:
         if payment.to_confirm:
-            txn.append(f"r-ACTION_TO_CONFIRM")
+            t.append_read(f"ACTION_TO_CONFIRM")
         response = np.random.binomial(1, 0.5)
         if response:
-            txn.append(f"w-{payment.id}")
+            t.append_write(f"payment_id({payment.id})")
         gateway_response = np.random.binomial(1, 0.5)
         if gateway_response:
-            txn.append(f"r-TRANSACTION")
+            t.append_read(f"TRANSACTION")
     except:
-        txn = complete_checkout_fail_handler(checkout, payment, txn)
+        t = complete_checkout_fail_handler(checkout, payment, t)
 
     if not payment.is_active:
-        txn = complete_checkout_fail_handler(checkout, payment, txn)
-    return txn
+        t = complete_checkout_fail_handler(checkout, payment, t)
+    return t
 
-def complete_checkout_fail_handler(checkout: Checkout, payment: Payment, txn: list[str]) -> list[str]:
+def complete_checkout_fail_handler(checkout: Checkout, payment: Payment, t: Transaction) -> list[str]:
     update_fields = []
     if checkout.completing_started_at is not None:
         update_fields.append("completing_started_at")
@@ -281,49 +284,49 @@ def complete_checkout_fail_handler(checkout: Checkout, payment: Payment, txn: li
             pass
         else:
             if not update_fields:
-                txn.append(f"w-is_voucher_usage_increased")
+                t.append_write(f"is_voucher_usage_increased")
             else:
                 update_fields.append("is_voucher_usage_increased")
             if voucher.usage_limit:
-                txn.append(f"w-{voucher.usage_limit - 1}")
+                t.append_write(f"w-{voucher.usage_limit - 1}")
             if voucher.single_use:
-                txn.append(f"w-{False}")
+                t.append_write(f"w-{False}")
             if voucher.apply_once_per_customer:
-                txn.append(f"w-{voucher.apply_once_per_customer}")
+                t.append_write(f"w-{voucher.apply_once_per_customer}")
     if update_fields:
-        txn.append(f"w-checkout")
+        t.append_write(f"checkout")
     
     if payment:
         if payment.can_refund:
-            txn.append(f"r-refund")
-            if txn is None:
-                return txn
-            txn.append(f"r-refund")
+            t.append_read(f"refund")
+            if t is None:
+                return t
+            t.append_read(f"refund")
         elif payment.can_void:
-            txn.append(f"r-void")
-            if txn is None:
-                return txn
-            txn.append(f"r-void")   
-    return txn
+            t.append_read(f"void")
+            if t is None:
+                return t
+            t.append_read(f"void")   
+    return t
 
 def saleor_checkout_payment_process_sim():
     """
     Example output:
 
-    ['r-13', 'r-80', 'r-ACTION_TO_CONFIRM']
-    ['r-0', 'r-order0']
-    ['r-16', 'r-19']
-    ['r-30', 'r-31', 'w-31', 'r-TRANSACTION', 'r-void', 'r-void']
-    ['r-54', 'r-95']
-    ['r-35', 'r-71', 'r-TRANSACTION', 'r-refund', 'r-refund']
-    ['r-72', 'r-61', 'r-TRANSACTION', 'w-checkout', 'r-void', 'r-void']
-    ['r-41', 'r-order41']
-    ['r-58', 'r-70', 'r-ACTION_TO_CONFIRM', 'w-70']
-    ['r-67', 'r-96', 'w-96', 'r-TRANSACTION']
+    ['r-checkout_pk(3)', 'r-payment_id(72)', 'r-ACTION_TO_CONFIRM', 'w-payment_id(72)', 'r-TRANSACTION']
+    ['r-checkout_pk(77)', 'r-payment_id(41)', 'w-payment_id(41)']
+    ['r-checkout_pk(96)', 'r-payment_id(92)', 'w-payment_id(92)', 'r-TRANSACTION']
+    ['r-checkout_pk(56)', 'r-payment_id(45)', 'r-ACTION_TO_CONFIRM', 'r-TRANSACTION', 'w-checkout']
+    ['r-checkout_pk(58)', 'r-payment_id(70)', 'r-refund', 'r-refund']
+    ['r-checkout_pk(47)', 'r-checkout_pk(47)']
+    ['r-checkout_pk(37)', 'r-payment_id(91)', 'r-TRANSACTION']
+    ['r-checkout_pk(15)', 'r-payment_id(99)', 'r-ACTION_TO_CONFIRM', 'w-payment_id(99)']
+    ['r-checkout_pk(5)', 'r-payment_id(44)', 'r-ACTION_TO_CONFIRM', 'r-TRANSACTION']
+    ['r-checkout_pk(44)', 'r-payment_id(83)', 'r-TRANSACTION']
     """
     checkout_pks = list(range(100))
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         checkout_pk = np.random.choice(checkout_pks)
         result = saleor_checkout_payment_process_generator(checkout_pk)
         print(result)
@@ -347,37 +350,37 @@ def saleor_cancel_order_generator(fulfillment_pk: int) -> list[str]:
     fulfillment_status (save) –> write
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
 
     fulfillment = Fulfillment()
-    txn.append(f"r-{fulfillment_pk}")
+    t.append_read(f"fulfillment_pk({fulfillment_pk})")
     if fulfillment.warehouse:
         for line in fulfillment.lines:
             if line.order_line.variant and line.order_line.track_inventory:
-                txn.append(f"r-{line.order_line.pk}")
-        txn.append(f"w-{fulfillment_pk}")
-    txn.append(f"w-{len(fulfillment.lines)} lines")
+                t.append_read(f"order_line_pk({line.order_line.pk})")
+        t.append_write(f"fulfillment_pk({fulfillment_pk})")
+    t.append_write(f"lines({len(fulfillment.lines)})")
 
-    return txn
+    return t
 
 def saleor_cancel_order_sim():
     """
     Example output:
 
-    ['r-79', 'r-47', 'r-48', 'r-92', 'r-49', 'w-79', 'w-5 lines']
-    ['r-30', 'w-30', 'w-8 lines']
-    ['r-85', 'r-91', 'r-25', 'w-85', 'w-9 lines']
-    ['r-14', 'r-31', 'r-58', 'r-16', 'w-14', 'w-8 lines']
-    ['r-98', 'r-51', 'r-28', 'r-27', 'w-98', 'w-8 lines']
-    ['r-43', 'r-91', 'w-43', 'w-3 lines']
-    ['r-83', 'r-43', 'w-83', 'w-6 lines']
-    ['r-2', 'w-2', 'w-2 lines']
-    ['r-6', 'w-6', 'w-2 lines']
-    ['r-64', 'r-26', 'w-64', 'w-6 lines']
+    ['r-fulfillment_pk(13)', 'r-order_line_pk(79)', 'w-fulfillment_pk(13)', 'w-lines(1)']
+    ['r-fulfillment_pk(13)', 'r-order_line_pk(88)', 'w-fulfillment_pk(13)', 'w-lines(7)']
+    ['r-fulfillment_pk(63)', 'r-order_line_pk(37)', 'r-order_line_pk(74)', 'w-fulfillment_pk(63)', 'w-lines(7)']
+    ['r-fulfillment_pk(93)', 'r-order_line_pk(1)', 'w-fulfillment_pk(93)', 'w-lines(7)']
+    ['r-fulfillment_pk(48)', 'r-order_line_pk(30)', 'r-order_line_pk(5)', 'r-order_line_pk(12)', 'w-fulfillment_pk(48)', 'w-lines(4)']
+    ['r-fulfillment_pk(54)', 'w-fulfillment_pk(54)', 'w-lines(1)']
+    ['r-fulfillment_pk(76)', 'w-fulfillment_pk(76)', 'w-lines(1)']
+    ['r-fulfillment_pk(70)', 'r-order_line_pk(68)', 'w-fulfillment_pk(70)', 'w-lines(3)']
+    ['r-fulfillment_pk(57)', 'r-order_line_pk(48)', 'r-order_line_pk(76)', 'w-fulfillment_pk(57)', 'w-lines(3)']
+    ['r-fulfillment_pk(98)', 'r-order_line_pk(86)', 'r-order_line_pk(27)', 'w-fulfillment_pk(98)', 'w-lines(5)']
     """
     fulfillment_pks = list(range(100))
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         fulfillment_pk = np.random.choice(fulfillment_pks)
         result = saleor_cancel_order_generator(fulfillment_pk)
         print(result)
@@ -407,60 +410,58 @@ def saleor_payment_order(order_pk: int, amount: float) -> list[str]:
             UPDATE payment status -> write payment record
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
 
     # Read order row from DB and lock it for update
     order = Order(order_pk)
-    txn.append(f"r-{order_pk}")
+    t.append_read(f"order_pk({order_pk})")
     
     # Read payment row (associated with the order) and lock it for update
     payment = order.payment
-    txn.append(f"r-{payment.pk}")
+    t.append_read(f"payment_pk({payment.pk})")
     
     # Validation: payment must be active and amount must be positive.
     if not payment.is_active:
-        txn.append("validation-error: inactive payment")
-        return txn # Abort transaction
+        return t # Abort transaction
     if amount <= 0:
-        txn.append("validation-error: non-positive amount")
-        return txn # Abort transaction
+        return t # Abort transaction
     
     # Perform the capture transaction via the payment gateway.
     # This call would normally create and record a new transaction.
-    transaction = Transaction()  # Result from gateway.capture(payment, amount)
-    txn.append(f"w-{transaction.pk}")  # Write operation: saving the transaction record
+    transaction = SaleorTransaction()  # Result from gateway.capture(payment, amount)
+    t.append_write(f"transaction_pk({transaction.pk})")  # Write operation: saving the transaction record
     
     # If the capture transaction succeeded, update order and payment statuses.
     if transaction.kind == "CAPTURE":
         # Read site settings row for update (e.g., for logging or additional validation)
         site = Site()
-        txn.append(f"r-{site.pk}")
+        t.append_read(f"site_pk({site.pk})")
         
         # Write operations: updating order and payment statuses.
-        txn.append(f"w-{order.pk}")    # Write operation: update order status to 'charged'
-        txn.append(f"w-{payment.pk}")  # Write operation: update payment status (captured)
+        t.append_write(f"order_pk({order.pk})")    # Write operation: update order status to 'charged'
+        t.append_write(f"payment_pk{payment.pk})")  # Write operation: update payment status (captured)
 
-    return txn
+    return t
 
 def saleor_payment_order_sim():
     """
     Example output:
 
-    ['r-2', 'r-32', 'w-48', 'r-61', 'w-2', 'w-32']
-    ['r-34', 'r-82', 'w-65']
-    ['r-87', 'r-68', 'w-95']
-    ['r-23', 'r-43', 'validation-error: inactive payment']
-    ['r-25', 'r-97', 'w-23']
-    ['r-27', 'r-8', 'validation-error: inactive payment']
-    ['r-37', 'r-94', 'w-31']
-    ['r-14', 'r-98', 'w-89']
-    ['r-74', 'r-67', 'w-98']
-    ['r-59', 'r-85', 'w-64', 'r-66', 'w-59', 'w-85']
+    ['r-order_pk(26)', 'r-payment_pk(31)', 'w-transaction_pk(86)']
+    ['r-order_pk(2)', 'r-payment_pk(73)', 'w-transaction_pk(56)', 'r-site_pk(15)', 'w-order_pk(2)', 'w-payment_pk73)']
+    ['r-order_pk(24)', 'r-payment_pk(9)', 'w-transaction_pk(76)', 'r-site_pk(40)', 'w-order_pk(24)', 'w-payment_pk9)']
+    ['r-order_pk(6)', 'r-payment_pk(64)', 'w-transaction_pk(79)']
+    ['r-order_pk(81)', 'r-payment_pk(66)', 'w-transaction_pk(30)', 'r-site_pk(35)', 'w-order_pk(81)', 'w-payment_pk66)']
+    ['r-order_pk(67)', 'r-payment_pk(93)', 'w-transaction_pk(84)']
+    ['r-order_pk(36)', 'r-payment_pk(22)']
+    ['r-order_pk(19)', 'r-payment_pk(97)', 'w-transaction_pk(30)']
+    ['r-order_pk(50)', 'r-payment_pk(66)']
+    ['r-order_pk(1)', 'r-payment_pk(25)']
     """
     order_pks: int = list(range(100))
     amount: float = np.random.uniform(-10, 100)
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         order_pk = np.random.choice(order_pks)
         result = saleor_payment_order(order_pk, amount)
         print(result)
@@ -497,58 +498,58 @@ def saleor_order_fulfill_generator(order_id: str, input_data: dict) -> list[str]
                 UPDATE Allocation SET quantity_allocated = quantity_allocated - quantity WHERE id = allocation.pk
                 UPDATE Stock SET quantity_allocated = quantity_allocated - quantity WHERE id = stock.pk
 
-      txn.append("w-{order_id}")  # update order record with new status
+      t.append("w-{order_id}")  # update order record with new status
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
     
     # Read order record and lock for update
-    txn.append(f"r-{order_id}")
+    t.append_read(f"order_id({order_id})")
     
     # Retrieve order lines (simulated from input_data)
     order_line_ids = input_data.get("order_line_ids", [])
     for line_id in order_line_ids:
-        txn.append(f"r-{line_id}")
+        t.append_read(f"line_id({line_id})")
     
-    # TODO: differentiate between different order lines in txn list
+    # TODO: differentiate between different order lines in t list
     # Process each order line
     for line in input_data.get("lines", []):
         warehouse_id = line.get("warehouse")
-        txn.append(f"r-{warehouse_id}")
+        t.append_read(f"warehouse_id({warehouse_id})")
         
         # Simulate fulfillment decision and subsequent writes
         if line.get("fulfill", True):
-            txn.append("r-fulfillment")  # get_or_create fulfillment
+            t.append_read("r-fulfillment")  # get_or_create fulfillment
             if not np.random.binomial(1, 0.5):  # If fulfillment doesn't exist
-                txn.append("w-fulfillment")
-            txn.append("r-alloc")
-            txn.append("r-stock")
-            txn.append("w-fulfillment_line")
-            txn.append("w-order_line")
-            txn.append("w-alloc")
-            txn.append("w-stock")   
-    txn.append(f"w-{order_id}") # Update order status
+                t.append_write("fulfillment")
+            t.append_read("alloc")
+            t.append_read("stock")
+            t.append_write("fulfillment_line")
+            t.append_write("order_line")
+            t.append_write("alloc")
+            t.append_write("stock")   
+    t.append_write(f"order_id({order_id})") # Update order status
     
-    return txn
+    return t
 
 def saleor_order_fulfill_sim():
     """
     Example output:
 
-    ['r-53', 'r-59', 'r-89', 'r-75', 'r-71', 'r-28', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-60', 'r-9', 'r-76', 'w-53']
-    ['r-53', 'r-69', 'r-87', 'r-39', 'r-77', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-84', 'r-86', 'w-53']
-    ['r-19', 'r-89', 'r-84', 'r-70', 'r-9', 'r-28', 'r-38', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-19']
-    ['r-18', 'r-17', 'r-68', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-18']
-    ['r-38', 'r-12', 'r-2', 'r-45', 'r-15', 'r-19', 'r-94', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-64', 'r-96', 'w-38']
-    ['r-46', 'r-63', 'r-72', 'r-14', 'r-55', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-44', 'r-27', 'w-46']
-    ['r-35', 'r-51', 'r-6', 'r-94', 'r-48', 'r-65', 'r-61', 'r-66', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-83', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-35']
-    ['r-38', 'r-34', 'r-71', 'r-92', 'r-68', 'w-38']
-    ['r-81', 'r-56', 'r-4', 'r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-81']
-    ['r-4', 'r-19', 'r-91', 'r-36', 'r-66', 'r-62', 'r-70', 'r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-4']
+    ['r-order_id(78)', 'r-line_id(66)', 'r-line_id(95)', 'r-line_id(46)', 'r-warehouse_id(24)', 'r-r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(48)', 'r-warehouse_id(33)', 'w-order_id(78)']
+    ['r-order_id(44)', 'r-line_id(71)', 'r-line_id(18)', 'r-warehouse_id(79)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(23)', 'w-order_id(44)']
+    ['r-order_id(36)', 'r-line_id(47)', 'r-warehouse_id(43)', 'w-order_id(36)']
+    ['r-order_id(28)', 'r-line_id(62)', 'r-line_id(17)', 'r-line_id(22)', 'r-warehouse_id(64)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(78)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(70)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-order_id(28)']
+    ['r-order_id(81)', 'r-line_id(65)', 'r-warehouse_id(33)', 'w-order_id(81)']
+    ['r-order_id(53)', 'r-line_id(91)', 'r-line_id(16)', 'r-line_id(36)', 'r-line_id(99)', 'r-warehouse_id(13)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(43)', 'r-warehouse_id(22)', 'r-warehouse_id(12)', 'w-order_id(53)']
+    ['r-order_id(21)', 'r-line_id(80)', 'r-line_id(2)', 'r-line_id(13)', 'r-line_id(26)', 'r-warehouse_id(23)', 'r-warehouse_id(94)', 'r-warehouse_id(50)', 'r-r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(41)', 'r-r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-order_id(21)']
+    ['r-order_id(56)', 'r-line_id(77)', 'r-warehouse_id(62)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-order_id(56)']
+    ['r-order_id(17)', 'r-line_id(20)', 'r-line_id(46)', 'r-warehouse_id(38)', 'r-warehouse_id(18)', 'w-order_id(17)']
+    ['r-order_id(88)', 'r-line_id(30)', 'r-line_id(95)', 'r-line_id(36)', 'r-line_id(4)', 'r-warehouse_id(27)', 'r-warehouse_id(32)', 'r-warehouse_id(64)', 'r-r-fulfillment', 'w-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'r-warehouse_id(35)', 'r-r-fulfillment', 'r-alloc', 'r-stock', 'w-fulfillment_line', 'w-order_line', 'w-alloc', 'w-stock', 'w-order_id(88)']
     """
     order_ids = list(range(100))
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         num_lines = np.random.choice(range(1, 5))
         input_data = {
             "order_line_ids": [np.random.choice(order_ids) for _ in range(num_lines)],
@@ -585,55 +586,55 @@ def saleor_order_lines_create_generator(order_id: str, input_data: dict) -> list
         Trigger order status event –> write order_event_status
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
 
     # Read order record (lock for update)
-    txn.append(f"r-{order_id}")
+    t.append_read(f"order_id({order_id})")
 
     # Process each new order line from input_data
     for line in input_data.get("lines", []):
         variant_id = line.get("variant_id")
         # Read product variant record (lock for update)
-        txn.append(f"r-{variant_id}")
+        t.append_read(f"variant_id({variant_id})")
         # Simulate writing a new order line record. Here we simulate an order line ID.
         order_line_id = f"line_{variant_id}"
-        txn.append(f"w-{order_line_id}")
+        t.append_write(f"order_line_id({order_line_id})")
 
     # Create order event for added products
-    txn.append("w-order_event")
+    t.append_write("order_event")
     # Invalidate order prices
-    txn.append(f"w-{order_id}")  # update should_refresh_prices field
+    t.append_write(f"order_id({order_id})") # Update should_refresh_prices field
 
     # Recalculate order weight
     for line in input_data.get("lines", []):
         order_line_id = f"line_{line.get('variant_id')}"
-        txn.append(f"r-{order_line_id}")  # read each order line for weight calculation
-    txn.append(f"w-{order_id}")  # Update order weight field
+        t.append_read(f"order_line_id({order_line_id})") # Read each order line for weight calculation
+    t.append_write(f"order_weight({order_id})") # Update order weight field
 
-    txn.append(f"w-{order_id}") # Update search_vector field
-    txn.append(f"w-{order_id}") # Save the order (final write)
-    txn.append("w-order_event_status")     # Call event by order status (simulate writing order event status update)
+    t.append_write(f"search_vector({order_id})") # Update search_vector field
+    t.append_write(f"order_id({order_id})") # Save the order (final write)
+    t.append_write("order_event_status")     # Call event by order status (simulate writing order event status update)
 
-    return txn
+    return t
 
 def saleor_order_lines_create_sim():
     """
     Example output:
 
-    ['r-64', 'r-87', 'w-line_87', 'r-49', 'w-line_49', 'r-94', 'w-line_94', 'r-96', 'w-line_96', 'r-41', 'w-line_41', 'r-86', 'w-line_86', 'r-26', 'w-line_26', 'r-50', 'w-line_50', 'w-order_event', 'w-64', 'r-line_87', 'r-line_49', 'r-line_94', 'r-line_96', 'r-line_41', 'r-line_86', 'r-line_26', 'r-line_50', 'w-64', 'w-64', 'w-64', 'w-order_event_status']
-    ['r-54', 'r-84', 'w-line_84', 'r-50', 'w-line_50', 'r-23', 'w-line_23', 'r-97', 'w-line_97', 'r-23', 'w-line_23', 'r-21', 'w-line_21', 'w-order_event', 'w-54', 'r-line_84', 'r-line_50', 'r-line_23', 'r-line_97', 'r-line_23', 'r-line_21', 'w-54', 'w-54', 'w-54', 'w-order_event_status']
-    ['r-76', 'r-11', 'w-line_11', 'r-36', 'w-line_36', 'w-order_event', 'w-76', 'r-line_11', 'r-line_36', 'w-76', 'w-76', 'w-76', 'w-order_event_status']
-    ['r-18', 'r-59', 'w-line_59', 'r-6', 'w-line_6', 'r-93', 'w-line_93', 'r-76', 'w-line_76', 'r-70', 'w-line_70', 'r-38', 'w-line_38', 'w-order_event', 'w-18', 'r-line_59', 'r-line_6', 'r-line_93', 'r-line_76', 'r-line_70', 'r-line_38', 'w-18', 'w-18', 'w-18', 'w-order_event_status']
-    ['r-18', 'r-10', 'w-line_10', 'r-22', 'w-line_22', 'r-51', 'w-line_51', 'r-28', 'w-line_28', 'w-order_event', 'w-18', 'r-line_10', 'r-line_22', 'r-line_51', 'r-line_28', 'w-18', 'w-18', 'w-18', 'w-order_event_status']
-    ['r-66', 'r-6', 'w-line_6', 'r-73', 'w-line_73', 'r-92', 'w-line_92', 'w-order_event', 'w-66', 'r-line_6', 'r-line_73', 'r-line_92', 'w-66', 'w-66', 'w-66', 'w-order_event_status']
-    ['r-23', 'r-93', 'w-line_93', 'r-60', 'w-line_60', 'r-21', 'w-line_21', 'r-27', 'w-line_27', 'r-56', 'w-line_56', 'r-61', 'w-line_61', 'r-55', 'w-line_55', 'w-order_event', 'w-23', 'r-line_93', 'r-line_60', 'r-line_21', 'r-line_27', 'r-line_56', 'r-line_61', 'r-line_55', 'w-23', 'w-23', 'w-23', 'w-order_event_status']
-    ['r-21', 'r-36', 'w-line_36', 'r-80', 'w-line_80', 'r-54', 'w-line_54', 'r-40', 'w-line_40', 'r-73', 'w-line_73', 'r-49', 'w-line_49', 'r-33', 'w-line_33', 'r-41', 'w-line_41', 'r-92', 'w-line_92', 'w-order_event', 'w-21', 'r-line_36', 'r-line_80', 'r-line_54', 'r-line_40', 'r-line_73', 'r-line_49', 'r-line_33', 'r-line_41', 'r-line_92', 'w-21', 'w-21', 'w-21', 'w-order_event_status']
-    ['r-90', 'r-13', 'w-line_13', 'r-39', 'w-line_39', 'r-24', 'w-line_24', 'r-43', 'w-line_43', 'r-16', 'w-line_16', 'r-72', 'w-line_72', 'w-order_event', 'w-90', 'r-line_13', 'r-line_39', 'r-line_24', 'r-line_43', 'r-line_16', 'r-line_72', 'w-90', 'w-90', 'w-90', 'w-order_event_status']
-    ['r-58', 'r-89', 'w-line_89', 'r-5', 'w-line_5', 'r-14', 'w-line_14', 'r-32', 'w-line_32', 'r-67', 'w-line_67', 'r-40', 'w-line_40', 'w-order_event', 'w-58', 'r-line_89', 'r-line_5', 'r-line_14', 'r-line_32', 'r-line_67', 'r-line_40', 'w-58', 'w-58', 'w-58', 'w-order_event_status']
+    ['r-order_id(58)', 'r-variant_id(77)', 'w-order_line_id(line_77)', 'r-variant_id(83)', 'w-order_line_id(line_83)', 'r-variant_id(90)', 'w-order_line_id(line_90)', 'r-variant_id(10)', 'w-order_line_id(line_10)', 'r-variant_id(57)', 'w-order_line_id(line_57)', 'r-variant_id(36)', 'w-order_line_id(line_36)', 'r-variant_id(50)', 'w-order_line_id(line_50)', 'r-variant_id(77)', 'w-order_line_id(line_77)', 'r-variant_id(72)', 'w-order_line_id(line_72)', 'w-order_event', 'w-order_id(58)', 'r-order_line_id(line_77)', 'r-order_line_id(line_83)', 'r-order_line_id(line_90)', 'r-order_line_id(line_10)', 'r-order_line_id(line_57)', 'r-order_line_id(line_36)', 'r-order_line_id(line_50)', 'r-order_line_id(line_77)', 'r-order_line_id(line_72)', 'w-order_weight(58)', 'w-search_vector(58)', 'w-order_id(58)', 'w-order_event_status']
+    ['r-order_id(33)', 'r-variant_id(26)', 'w-order_line_id(line_26)', 'r-variant_id(17)', 'w-order_line_id(line_17)', 'w-order_event', 'w-order_id(33)', 'r-order_line_id(line_26)', 'r-order_line_id(line_17)', 'w-order_weight(33)', 'w-search_vector(33)', 'w-order_id(33)', 'w-order_event_status']
+    ['r-order_id(84)', 'r-variant_id(37)', 'w-order_line_id(line_37)', 'r-variant_id(30)', 'w-order_line_id(line_30)', 'r-variant_id(39)', 'w-order_line_id(line_39)', 'r-variant_id(84)', 'w-order_line_id(line_84)', 'r-variant_id(44)', 'w-order_line_id(line_44)', 'w-order_event', 'w-order_id(84)', 'r-order_line_id(line_37)', 'r-order_line_id(line_30)', 'r-order_line_id(line_39)', 'r-order_line_id(line_84)', 'r-order_line_id(line_44)', 'w-order_weight(84)', 'w-search_vector(84)', 'w-order_id(84)', 'w-order_event_status']
+    ['r-order_id(49)', 'r-variant_id(60)', 'w-order_line_id(line_60)', 'r-variant_id(43)', 'w-order_line_id(line_43)', 'r-variant_id(25)', 'w-order_line_id(line_25)', 'r-variant_id(26)', 'w-order_line_id(line_26)', 'r-variant_id(79)', 'w-order_line_id(line_79)', 'r-variant_id(26)', 'w-order_line_id(line_26)', 'r-variant_id(76)', 'w-order_line_id(line_76)', 'w-order_event', 'w-order_id(49)', 'r-order_line_id(line_60)', 'r-order_line_id(line_43)', 'r-order_line_id(line_25)', 'r-order_line_id(line_26)', 'r-order_line_id(line_79)', 'r-order_line_id(line_26)', 'r-order_line_id(line_76)', 'w-order_weight(49)', 'w-search_vector(49)', 'w-order_id(49)', 'w-order_event_status']
+    ['r-order_id(55)', 'r-variant_id(74)', 'w-order_line_id(line_74)', 'r-variant_id(38)', 'w-order_line_id(line_38)', 'r-variant_id(81)', 'w-order_line_id(line_81)', 'w-order_event', 'w-order_id(55)', 'r-order_line_id(line_74)', 'r-order_line_id(line_38)', 'r-order_line_id(line_81)', 'w-order_weight(55)', 'w-search_vector(55)', 'w-order_id(55)', 'w-order_event_status']
+    ['r-order_id(86)', 'r-variant_id(90)', 'w-order_line_id(line_90)', 'r-variant_id(87)', 'w-order_line_id(line_87)', 'r-variant_id(85)', 'w-order_line_id(line_85)', 'w-order_event', 'w-order_id(86)', 'r-order_line_id(line_90)', 'r-order_line_id(line_87)', 'r-order_line_id(line_85)', 'w-order_weight(86)', 'w-search_vector(86)', 'w-order_id(86)', 'w-order_event_status']
+    ['r-order_id(85)', 'r-variant_id(81)', 'w-order_line_id(line_81)', 'r-variant_id(66)', 'w-order_line_id(line_66)', 'r-variant_id(9)', 'w-order_line_id(line_9)', 'r-variant_id(7)', 'w-order_line_id(line_7)', 'r-variant_id(98)', 'w-order_line_id(line_98)', 'r-variant_id(59)', 'w-order_line_id(line_59)', 'r-variant_id(19)', 'w-order_line_id(line_19)', 'r-variant_id(61)', 'w-order_line_id(line_61)', 'r-variant_id(62)', 'w-order_line_id(line_62)', 'w-order_event', 'w-order_id(85)', 'r-order_line_id(line_81)', 'r-order_line_id(line_66)', 'r-order_line_id(line_9)', 'r-order_line_id(line_7)', 'r-order_line_id(line_98)', 'r-order_line_id(line_59)', 'r-order_line_id(line_19)', 'r-order_line_id(line_61)', 'r-order_line_id(line_62)', 'w-order_weight(85)', 'w-search_vector(85)', 'w-order_id(85)', 'w-order_event_status']
+    ['r-order_id(77)', 'r-variant_id(76)', 'w-order_line_id(line_76)', 'r-variant_id(41)', 'w-order_line_id(line_41)', 'r-variant_id(58)', 'w-order_line_id(line_58)', 'r-variant_id(87)', 'w-order_line_id(line_87)', 'r-variant_id(6)', 'w-order_line_id(line_6)', 'r-variant_id(37)', 'w-order_line_id(line_37)', 'w-order_event', 'w-order_id(77)', 'r-order_line_id(line_76)', 'r-order_line_id(line_41)', 'r-order_line_id(line_58)', 'r-order_line_id(line_87)', 'r-order_line_id(line_6)', 'r-order_line_id(line_37)', 'w-order_weight(77)', 'w-search_vector(77)', 'w-order_id(77)', 'w-order_event_status']
+    ['r-order_id(23)', 'r-variant_id(63)', 'w-order_line_id(line_63)', 'r-variant_id(68)', 'w-order_line_id(line_68)', 'r-variant_id(80)', 'w-order_line_id(line_80)', 'r-variant_id(94)', 'w-order_line_id(line_94)', 'w-order_event', 'w-order_id(23)', 'r-order_line_id(line_63)', 'r-order_line_id(line_68)', 'r-order_line_id(line_80)', 'r-order_line_id(line_94)', 'w-order_weight(23)', 'w-search_vector(23)', 'w-order_id(23)', 'w-order_event_status']
+    ['r-order_id(48)', 'r-variant_id(98)', 'w-order_line_id(line_98)', 'r-variant_id(1)', 'w-order_line_id(line_1)', 'r-variant_id(92)', 'w-order_line_id(line_92)', 'r-variant_id(8)', 'w-order_line_id(line_8)', 'r-variant_id(40)', 'w-order_line_id(line_40)', 'r-variant_id(5)', 'w-order_line_id(line_5)', 'w-order_event', 'w-order_id(48)', 'r-order_line_id(line_98)', 'r-order_line_id(line_1)', 'r-order_line_id(line_92)', 'r-order_line_id(line_8)', 'r-order_line_id(line_40)', 'r-order_line_id(line_5)', 'w-order_weight(48)', 'w-search_vector(48)', 'w-order_id(48)', 'w-order_event_status']
     """
     order_ids = list(range(100))
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         num_lines = np.random.choice(range(1, 10))
         input_data = {
             "lines": [{"variant_id": np.random.choice(order_ids)} for _ in range(num_lines)]
@@ -674,54 +675,54 @@ def saleor_stripe_handle_authorized_payment_intent_generator(payment_intent: Str
             SELECT * FROM Checkout WHERE id = checkout_id FOR UPDATE
             INSERT INTO Order (order_data) VALUES ('order_info')
     """
-    txn = []
+    t = Transaction()
     payment = Payment()
     checkout = Checkout()
 
-    txn.append(f"r-{payment_intent.payment_intent_id}")
+    t.append_read(f"payment_intent_id({payment_intent.payment_intent_id})")
        
     if payment_intent.checkout_exists:
-        txn.append(f"r-{payment.id}")
+        t.append_read(f"payment_id({payment.id})")
 
     # Re-read Payment with lock
-    txn.append(f"r-{payment_intent.payment_intent_id}")
-    txn.append(f"w-update_pmt_details-{payment.id}")
+    t.append_read(f"payment_intent_id({payment_intent.payment_intent_id})")
+    t.append_write(f"update_pmt_details({payment.id})")
 
     if not payment_intent.payment_active:
         # Payment is inactive –> void/refund branch.
-        txn.append(f"r-transaction-{payment.id}")
-        txn.append(f"w-insert_into_transaction-{payment.id}")
-        txn.append(f"w-update_payment-{payment.id}")
+        t.append_read(f"transaction({payment.id})")
+        t.append_write(f"insert_into_transaction({payment.id})")
+        t.append_write(f"update_payment({payment.id})")
     elif payment_intent.payment_order_exists:
         if payment_intent.payment_charge_status_pending:
-            txn.append(f"w-insert_into_transaction-{payment.id}")
+            t.append_write(f"insert_into_transaction({payment.id})")
     elif payment_intent.checkout_exists:
         # Processing via checkout branch.
-        txn.append(f"r-{payment.id}")
-        txn.append(f"w-insert_into_transaction-{payment.id}")
-        txn.append(f"w-update_payment-{payment.id}")
-        txn.append(f"r-{checkout.id}")
-        txn.append(f"w-insert_into_order-{payment.order_id}")
+        t.append_read(f"payment_id({payment.id})")
+        t.append_write(f"insert_into_transaction({payment.id})")
+        t.append_write(f"update_payment({payment.id})")
+        t.append_read(f"checkout_id({checkout.id})")
+        t.append_write(f"insert_into_order({payment.order_id})")
 
-    return txn
+    return t
 
 def saleor_stripe_handle_authorized_payment_intent_sim():
     """
     Example output:
 
-    ['r-95', 'r-95', 'w-update_pmt_details-55', 'r-transaction-55', 'w-insert_into_transaction-55', 'w-update_payment-55']
-    ['r-42', 'r-64', 'r-42', 'w-update_pmt_details-64', 'r-transaction-64', 'w-insert_into_transaction-64', 'w-update_payment-64']
-    ['r-77', 'r-34', 'r-77', 'w-update_pmt_details-34', 'w-insert_into_transaction-34']
-    ['r-38', 'r-38', 'w-update_pmt_details-69', 'r-transaction-69', 'w-insert_into_transaction-69', 'w-update_payment-69']
-    ['r-81', 'r-54', 'r-81', 'w-update_pmt_details-54', 'w-insert_into_transaction-54']
-    ['r-53', 'r-53', 'w-update_pmt_details-17', 'r-transaction-17', 'w-insert_into_transaction-17', 'w-update_payment-17']
-    ['r-12', 'r-12', 'w-update_pmt_details-37']
-    ['r-0', 'r-67', 'r-0', 'w-update_pmt_details-67', 'r-transaction-67', 'w-insert_into_transaction-67', 'w-update_payment-67']
-    ['r-50', 'r-50', 'w-update_pmt_details-94', 'r-transaction-94', 'w-insert_into_transaction-94', 'w-update_payment-94']
-    ['r-98', 'r-35', 'r-98', 'w-update_pmt_details-35']
+    ['r-payment_intent_id(30)', 'r-payment_id(99)', 'r-payment_intent_id(30)', 'w-update_pmt_details(99)', 'r-transaction(99)', 'w-insert_into_transaction(99)', 'w-update_payment(99)']
+    ['r-payment_intent_id(58)', 'r-payment_intent_id(58)', 'w-update_pmt_details(70)']
+    ['r-payment_intent_id(47)', 'r-payment_id(90)', 'r-payment_intent_id(47)', 'w-update_pmt_details(90)', 'r-transaction(90)', 'w-insert_into_transaction(90)', 'w-update_payment(90)']
+    ['r-payment_intent_id(70)', 'r-payment_id(31)', 'r-payment_intent_id(70)', 'w-update_pmt_details(31)', 'w-insert_into_transaction(31)']
+    ['r-payment_intent_id(65)', 'r-payment_intent_id(65)', 'w-update_pmt_details(97)', 'r-transaction(97)', 'w-insert_into_transaction(97)', 'w-update_payment(97)']
+    ['r-payment_intent_id(45)', 'r-payment_id(74)', 'r-payment_intent_id(45)', 'w-update_pmt_details(74)', 'r-transaction(74)', 'w-insert_into_transaction(74)', 'w-update_payment(74)']
+    ['r-payment_intent_id(22)', 'r-payment_intent_id(22)', 'w-update_pmt_details(85)', 'r-transaction(85)', 'w-insert_into_transaction(85)', 'w-update_payment(85)']
+    ['r-payment_intent_id(0)', 'r-payment_id(85)', 'r-payment_intent_id(0)', 'w-update_pmt_details(85)', 'r-payment_id(85)', 'w-insert_into_transaction(85)', 'w-update_payment(85)', 'r-checkout_id(0)', 'w-insert_into_order(5)']
+    ['r-payment_intent_id(23)', 'r-payment_intent_id(23)', 'w-update_pmt_details(13)', 'w-insert_into_transaction(13)']
+    ['r-payment_intent_id(67)', 'r-payment_intent_id(67)', 'w-update_pmt_details(60)', 'r-transaction(60)', 'w-insert_into_transaction(60)', 'w-update_payment(60)']
     """
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         payment_intent = StripePaymentObj()
         result = saleor_stripe_handle_authorized_payment_intent_generator(payment_intent)
         print(result)
@@ -741,33 +742,33 @@ def saleor_stock_bulk_update_generator(stocks: list[dict], fields_to_update: lis
       BULK UPDATE Stock SET <fields_to_update> WHERE id IN ([stock_ids])
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
 
     stock_ids = [stock["id"] for stock in stocks]
     stock_ids_str = ", ".join([str(stock_id) for stock_id in stock_ids])
-    txn.append(f"r-{stock_ids_str}")
+    t.append_read(f"stock_ids({stock_ids_str})")
     fields_to_update_str = ", ".join(fields_to_update)
-    txn.append(f"w-{fields_to_update_str}") # Bulk update the stocks with the given fields
+    t.append_write(f"fields_to_update({fields_to_update_str})") # Bulk update the stocks with the given fields
     
-    return txn
+    return t
 
 def saleor_stock_bulk_update_sim():
     """
     Example output:
 
-    ['r-27, 21, 86, 11, 74, 28, 98, 60, 46', 'w-quantity, price']
-    ['r-45, 51, 94, 16, 57', 'w-quantity, price']
-    ['r-33, 56, 92, 75, 84, 44, 66, 98', 'w-quantity, price']
-    ['r-58', 'w-quantity, price']
-    ['r-9, 8, 14, 31, 86, 29, 6', 'w-quantity, price']
-    ['r-82, 13, 16, 6, 87, 33, 6', 'w-quantity, price']
-    ['r-83, 52, 62, 21, 49, 83, 55', 'w-quantity, price']
-    ['r-90', 'w-quantity, price']
-    ['r-46, 15, 5, 3, 41, 15, 46', 'w-quantity, price']
-    ['r-82, 31, 51, 92', 'w-quantity, price']
+    ['r-stock_ids(61)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(34, 13, 8)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(15)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(34, 30, 12, 40, 22)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(30, 13, 68, 56)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(65, 63, 0, 42, 38, 18, 25, 38)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(99, 61, 71, 83, 61, 74, 2, 34, 56)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(94, 23, 56, 67, 56, 65, 52, 77)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(70, 4, 86, 55)', 'w-fields_to_update(quantity, price)']
+    ['r-stock_ids(61)', 'w-fields_to_update(quantity, price)']
     """
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         stocks = [
             {"id": np.random.choice(range(100)), "quantity": np.random.randint(1, 100), "price": np.random.uniform(10, 100)}
             for _ in range(np.random.randint(1, 10))
@@ -796,9 +797,9 @@ def saleor_delete_categories_generator(categories_ids: list) -> list[str]:
         channel_ids = SELECT DISTINCT channel_id FROM ProductChannelListing WHERE product_id IN products
     TRANSACTION COMMIT
     """
-    txn = []
+    t = Transaction()
     
-    txn.append(f"r-{categories_ids}")
+    t.append_read(f"categories({categories_ids})")
 
     all_product_ids = []
     
@@ -806,41 +807,41 @@ def saleor_delete_categories_generator(categories_ids: list) -> list[str]:
         num_products = np.random.randint(1, 6)
         product_ids = np.random.randint(100, 1000, size=num_products).tolist()
         all_product_ids.append(product_ids)
-    txn.append(f"r-prefetch{all_product_ids}")
+    t.append_read(f"prefetch_products({all_product_ids})")
     
-    txn.append(f"r-ProductChannelListings-{product_ids}")
+    t.append_read(f"product_channel_listing({product_ids})")
     
-    txn.append(f"w-UpdateProductChannelListing")
+    t.append_write(f"product_channel_listing")
     
-    txn.append(f"w-delete-{categories_ids}")
+    t.append_write(f"delete_categories({categories_ids})")
     
-    txn.append(f"r-channel_id-{product_ids}")
+    t.append_read(f"channel_id({product_ids})")
     
-    return txn
+    return t
 
 def saleor_delete_categories_sim():
     """
     Example output:
 
-    ['r-[936, 637]', 'r-prefetch[[685, 478, 673, 114], [837, 701]]', 'r-ProductChannelListings-[837, 701]', 'w-UpdateProductChannelListing', 'w-delete-[936, 637]', 'r-channel_id-[837, 701]']
-    ['r-[481]', 'r-prefetch[[127, 915]]', 'r-ProductChannelListings-[127, 915]', 'w-UpdateProductChannelListing', 'w-delete-[481]', 'r-channel_id-[127, 915]']
-    ['r-[132, 107, 847, 802]', 'r-prefetch[[432], [890], [881, 977, 385, 937, 487], [790, 430, 757, 974, 472]]', 'r-ProductChannelListings-[790, 430, 757, 974, 472]', 'w-UpdateProductChannelListing', 'w-delete-[132, 107, 847, 802]', 'r-channel_id-[790, 430, 757, 974, 472]']
-    ['r-[481, 566, 533, 694]', 'r-prefetch[[885], [327, 697], [505, 523, 520, 264, 755], [202, 838]]', 'r-ProductChannelListings-[202, 838]', 'w-UpdateProductChannelListing', 'w-delete-[481, 566, 533, 694]', 'r-channel_id-[202, 838]']
-    ['r-[348, 213]', 'r-prefetch[[862], [185, 483, 570, 193, 694]]', 'r-ProductChannelListings-[185, 483, 570, 193, 694]', 'w-UpdateProductChannelListing', 'w-delete-[348, 213]', 'r-channel_id-[185, 483, 570, 193, 694]']
-    ['r-[282]', 'r-prefetch[[978, 323, 771]]', 'r-ProductChannelListings-[978, 323, 771]', 'w-UpdateProductChannelListing', 'w-delete-[282]', 'r-channel_id-[978, 323, 771]']
-    ['r-[53, 116, 375]', 'r-prefetch[[453, 713, 600, 702, 109], [122, 610, 501, 528, 691], [937, 905]]', 'r-ProductChannelListings-[937, 905]', 'w-UpdateProductChannelListing', 'w-delete-[53, 116, 375]', 'r-channel_id-[937, 905]']
-    ['r-[170, 163, 15]', 'r-prefetch[[922], [993, 808], [476, 687, 495]]', 'r-ProductChannelListings-[476, 687, 495]', 'w-UpdateProductChannelListing', 'w-delete-[170, 163, 15]', 'r-channel_id-[476, 687, 495]']
-    ['r-[694, 402]', 'r-prefetch[[811, 231, 204, 532, 275], [894, 507]]', 'r-ProductChannelListings-[894, 507]', 'w-UpdateProductChannelListing', 'w-delete-[694, 402]', 'r-channel_id-[894, 507]']
-    ['r-[467, 773, 401]', 'r-prefetch[[507, 832, 718], [659, 896, 130], [710, 266, 865, 200]]', 'r-ProductChannelListings-[710, 266, 865, 200]', 'w-UpdateProductChannelListing', 'w-delete-[467, 773, 401]', 'r-channel_id-[710, 266, 865, 200]']
+    ['r-categories([550, 79])', 'r-prefetch_products([[206, 847, 866, 679, 400], [486, 174, 186, 630, 462]])', 'r-product_channel_listing([486, 174, 186, 630, 462])', 'w-product_channel_listing', 'w-delete_categories([550, 79])', 'r-channel_id([486, 174, 186, 630, 462])']
+    ['r-categories([843, 228])', 'r-prefetch_products([[457, 529, 905, 255, 946], [627, 374, 559]])', 'r-product_channel_listing([627, 374, 559])', 'w-product_channel_listing', 'w-delete_categories([843, 228])', 'r-channel_id([627, 374, 559])']
+    ['r-categories([562, 32, 431, 157])', 'r-prefetch_products([[572], [347, 410, 738], [361, 420, 571, 289], [120, 424, 513]])', 'r-product_channel_listing([120, 424, 513])', 'w-product_channel_listing', 'w-delete_categories([562, 32, 431, 157])', 'r-channel_id([120, 424, 513])']
+    ['r-categories([651, 64, 631])', 'r-prefetch_products([[780, 232], [396, 778, 904, 494], [852, 963, 520, 587]])', 'r-product_channel_listing([852, 963, 520, 587])', 'w-product_channel_listing', 'w-delete_categories([651, 64, 631])', 'r-channel_id([852, 963, 520, 587])']
+    ['r-categories([282])', 'r-prefetch_products([[321, 429, 979, 616]])', 'r-product_channel_listing([321, 429, 979, 616])', 'w-product_channel_listing', 'w-delete_categories([282])', 'r-channel_id([321, 429, 979, 616])']
+    ['r-categories([530, 892])', 'r-prefetch_products([[365], [238, 334, 334]])', 'r-product_channel_listing([238, 334, 334])', 'w-product_channel_listing', 'w-delete_categories([530, 892])', 'r-channel_id([238, 334, 334])']
+    ['r-categories([660, 929])', 'r-prefetch_products([[707], [834]])', 'r-product_channel_listing([834])', 'w-product_channel_listing', 'w-delete_categories([660, 929])', 'r-channel_id([834])']
+    ['r-categories([566, 145, 912])', 'r-prefetch_products([[315, 446], [897], [179, 855, 439, 948, 314]])', 'r-product_channel_listing([179, 855, 439, 948, 314])', 'w-product_channel_listing', 'w-delete_categories([566, 145, 912])', 'r-channel_id([179, 855, 439, 948, 314])']
+    ['r-categories([185, 261])', 'r-prefetch_products([[596, 721, 502], [956, 927, 680]])', 'r-product_channel_listing([956, 927, 680])', 'w-product_channel_listing', 'w-delete_categories([185, 261])', 'r-channel_id([956, 927, 680])']
+    ['r-categories([538, 705, 232, 403])', 'r-prefetch_products([[948, 645, 713, 761], [133, 137, 819, 955], [617, 486, 139], [534, 669, 264, 700]])', 'r-product_channel_listing([534, 669, 264, 700])', 'w-product_channel_listing', 'w-delete_categories([538, 705, 232, 403])', 'r-channel_id([534, 669, 264, 700])']
     """
-    num_txn = 10
-    for _ in range(num_txn):
+    num_t = 10
+    for _ in range(num_t):
         categories_ids = np.random.randint(1, 1000, size=np.random.randint(1, 5)).tolist()
         result = saleor_delete_categories_generator(categories_ids)
         print(result)
 
 def main():
-    # saleor_checkout_voucher_code_sim() # Transaction 1
+    saleor_checkout_voucher_code_sim() # Transaction 1
     # saleor_checkout_payment_process_sim() # Transaction 2
     # saleor_cancel_order_sim() # Transaction 3
     # saleor_payment_order_sim() # Transaction 4
@@ -848,7 +849,7 @@ def main():
     # saleor_order_lines_create_sim() # Transaction 6
     # saleor_stripe_handle_authorized_payment_intent_sim() # Transaction 7
     # saleor_stock_bulk_update_sim() # Transaction 8
-    saleor_delete_categories_sim() # Transaction 9
+    # saleor_delete_categories_sim() # Transaction 9
 
 if __name__ == '__main__':
     main()
