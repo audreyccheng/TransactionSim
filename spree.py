@@ -182,37 +182,7 @@ def spree_fulfillment_changer_generator(order_id: int,
 
     TRANSACTION COMMIT
     """
-    t = Transaction()
 
-    # Read current quantity in current shipment
-    t.append_read(f"inventory_units-shipment_id({current_shipment_id})-variant_id({variant_id})")
-
-    # Conditionally update stock counts
-    t.append_conditional("order.state == 'complete' AND current != desired")
-
-    t.append_write(f"restock-stock_item-location({current_stock_location_id})-variant({variant_id})-qty(+{restock_quantity})")
-    t.append_write(f"unstock-stock_item-location({desired_stock_location_id})-variant({variant_id})-qty(-{unstock_quantity})")
-
-    # Desired shipment on_hand unit update
-    t.append_find_or_create(f"inventory_unit-shipment({desired_shipment_id})-state('on_hand')-variant({variant_id})")
-    t.append_write(f"update-inventory_unit-qty(+{new_on_hand_quantity})")
-
-    # Desired shipment backordered update (if needed)
-    backorder_qty = current_on_hand_quantity - new_on_hand_quantity
-    if backorder_qty > 0:
-        t.append_find_or_create(f"inventory_unit-shipment({desired_shipment_id})-state('backordered')-variant({variant_id})")
-        t.append_write(f"update-inventory_unit-qty(+{backorder_qty})")
-
-    # Reduce current shipment units
-    t.append_iterate("inventory_units", f"shipment({current_shipment_id})-variant({variant_id})")
-
-    t.append_conditional("unit.quantity > reduced_quantity")
-    t.append_write("unit.quantity -= reduced_quantity")
-
-    t.append_else()
-    t.append_delete("inventory_unit")
-
-    return t
 
 ### Other Transactions
 
