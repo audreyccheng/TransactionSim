@@ -1,5 +1,6 @@
 # https://github.com/spree/spree
 # Note that in Rails, calling .touch on an ActiveRecord object triggers a DB update.
+# Look for ActiveRecord::Base.transaction to find transaction blocks.
 # Total of 10 transactions
 
 import numpy as np
@@ -69,7 +70,67 @@ def spree_adjustment_update_sim(num_txn: int):
         transaction = spree_adjustment_update_generator(adjustment)
         print(transaction)
 
+### Transaction 2 (Transaction 4 from Tang et al.) ###
+def spree_checkout_controller_generator(order_id: int, input_data: dict) -> list[str]:
+    """
+    Transaction 4.
+    Validation-based transaction.
+    Purpose: Coordinate concurrent checkout.
+    app/controllers/spree/checkout_controller.rb:101
+
+    https://github.com/spree/spree/blob/a436948268d2626ed1bc8304d1a40e3f5b792992/storefront/spec/controllers/spree/checkout_controller_spec.rb#L641C7-L697C8
+    PSEUDOCODE:
+    In: state_lock_version
+    TRANSACTION START
+
+    SELECT state_lock_version FROM orders FOR UPDATE;
+
+    IF input.state_lock_version == db.state_lock_version THEN
+        UPDATE orders SET ship_address = {...}, 
+        last_ip_address = '0.0.0.0', 
+        state_lock_version = state_lock_version + 1  -- Increment the version to indicate update
+
+    TRANSACTION COMMIT
+    """
+
+    t = Transaction()
+    
+    t.append_read(f"lock_version-order_id({order_id})")  # Read current lock version
+    input_version = input_data["state_lock_version"]
+
+    # Only perform the update if the state_lock_version matches
+    if input_version == 1: # Simulate a successful update
+        t.append_write(f"order({order_id})")  # Write ship address
+        t.append_write("last_ip_addr(0.0.0.0)")  # Write last_ip_address
+        t.append_write(f"lock_version({1})")  # Set lock_version to 1
+
+    return t
+
+def spree_checkout_controller_sim(num_txn: int):
+    """
+    Example output:
+
+    ['r-lock_version-order_id(47)', 'w-order(47)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(29)', 'w-order(29)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(48)']
+    ['r-lock_version-order_id(54)', 'w-order(54)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(75)', 'w-order(75)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(26)', 'w-order(26)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(57)', 'w-order(57)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(17)', 'w-order(17)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(16)', 'w-order(16)', 'w-last_ip_addr(0.0.0.0)', 'w-lock_version(1)']
+    ['r-lock_version-order_id(13)']
+    """
+    for _ in range(num_txn):
+        order_id = np.random.randint(1, 100)
+        input_data = {
+            "state_lock_version": np.random.binomial(1, 0.8)
+        }
+        result = spree_checkout_controller_generator(order_id, input_data)
+        print(result)
+
 ### Other Transactions
+
 def spree_find_order_by_token_or_user_generator():
     """
     Transaction 1.
@@ -98,19 +159,6 @@ def spree_handle_action_call_generator():
     TRANSACTION COMMIT
     """
 
-def spree_checkout_controller_generator():
-    """
-    Transaction 4.
-    Validation-based transaction.
-    Purpose: Coordinate concurrent checkout.
-    app/controllers/spree/checkout_controller.rb:101
-
-    https://github.com/spree/spree/blob/a436948268d2626ed1bc8304d1a40e3f5b792992/storefront/spec/controllers/spree/checkout_controller_spec.rb#L641C7-L697C8
-    PSEUDOCODE:
-    In:
-    TRANSACTION START
-    TRANSACTION COMMIT
-    """
 
 def spree_ensure_sufficient_stock_lines_generator():
     """
@@ -193,8 +241,10 @@ def main():
     """
     # Number of transactions to simulate per transaction type
     num_txn_1 = 10
+    num_txn_2 = 10
 
-    spree_adjustment_update_sim(num_txn_1) # Transaction 1
+    # spree_adjustment_update_sim(num_txn_1) # Transaction 1
+    spree_checkout_controller_sim(num_txn_2) # Transaction 2
 
 if __name__ == "__main__":
     main()
