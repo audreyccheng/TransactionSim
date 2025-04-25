@@ -67,8 +67,8 @@ def spree_adjustment_update_sim(num_txn: int):
             "source_id": source_id,
             "source_type": np.random.choice(["Spree::PromotionAction", "OtherType"], p=[0.3, 0.7])
         }
-        transaction = spree_adjustment_update_generator(adjustment)
-        print(transaction)
+        result = spree_adjustment_update_generator(adjustment)
+        print(result)
 
 ### Transaction 2 (Transaction 4 from Tang et al.) ###
 def spree_checkout_controller_generator(order_id: int, input_data: dict) -> list[str]:
@@ -130,16 +130,16 @@ def spree_checkout_controller_sim(num_txn: int):
         print(result)
 
 ### Transaction 3 ###
-def spree_fulfillment_changer_generator(order_id: int,
-        variant_id: int,
+def spree_fulfillment_changer_generator(
         current_shipment_id: int,
         desired_shipment_id: int,
         current_stock_location_id: int,
         desired_stock_location_id: int,
         current_on_hand_quantity: int,
-        restock_quantity: int,
         unstock_quantity: int,
-        new_on_hand_quantity: int
+        new_on_hand_quantity: int,
+        order_state: str,
+        p: float,
     ) -> list[str]:
     """
     https://github.com/spree/spree/blob/249aa157ab33d94cffff779d66039c1b4580f6f4/core/app/models/spree/fulfilment_changer.rb#L41C5-L51C1
@@ -161,30 +161,101 @@ def spree_fulfillment_changer_generator(order_id: int,
 
     -- move inventory units between shipments
     -- part 1: update desired shipment
-    SELECT unit FROM inventory_units WHERE shipment_id = desired_shipment.id AND variant_id = variant.id
+    SELECT unit FROM inventory_units WHERE shipment_id = desired_shipment.id AND variant_id = variant.id AND state = 'on_hand'
     if unit is null: -- this represents a find_or_create
         INSERT INTO inventory_units (shipment_id, variant_id, state) VALUES (desired_shipment.id, variant.id, 'on_hand')
     UPDATE inventory_units SET quantity = quantity + new_on_hand_quantity
         WHERE shipment_id = desired_shipment.id AND variant_id = variant.id AND state = 'on_hand'
 
     if current_on_hand_quantity > new_on_hand_quantity:
-        UPDATE inventory_units SET quantity = quantity - (current_on_hand_quantity - new_on_hand_quantity)
-        WHERE shipment_id = current_shipment.id AND variant_id = variant.id AND state = 'on_hand';
-    if unit is null: -- this represents a find_or_create
-        INSERT INTO inventory_units (shipment_id, variant_id, state) VALUES (desired_shipment.id, variant.id, 'backordered')
+        SELECT unit FROM inventory_units WHERE shipment_id = desired_shipment.id AND variant_id = variant.id AND state = 'backordered
+        if unit is null: -- this represents a find_or_create
+            INSERT INTO inventory_units (shipment_id, variant_id, state) VALUES (desired_shipment.id, variant.id, 'backordered')
         UPDATE inventory_units SET quantity = quantity + new_backordered_quantity
             WHERE shipment_id = desired_shipment.id AND variant_id = variant.id AND state = 'backordered'
 
     -- part 2: update current shipment
-    UPDATE inventory_units SET quantity_left = quantity - reduced_quantity WHERE state = 'backordered'
+    UPDATE inventory_units SET quantity_left = current_on_hand_quantity - backorder_qty WHERE state = 'backordered'
     if quantity_left > 0:
-        UPDATE inventory_units SET quantity_left = quantity - reduced_quantity WHERE state = 'on_hand'
+        UPDATE inventory_units SET quantity_left = quantity - on_hand_qty WHERE state = 'on_hand'
 
     TRANSACTION COMMIT
     """
+    t = Transaction()
 
+    # Read current quantity in current shipment
+    t.append_read(f"shipment_id-backordered({current_shipment_id})")
+
+    # Conditionally update stock counts
+    if order_state == "complete" and current_stock_location_id != desired_stock_location_id:
+        t.append_write(f"restock_current_quantity({current_on_hand_quantity})")
+        t.append_write(f"unstock_desired_quantity({unstock_quantity})")
+
+    # Desired shipment on_hand unit update
+    if p > 0.5: # Simulate a find_or_create
+        t.append_read(f"on_hand_unit-shipment({desired_shipment_id})")
+    else:
+        t.append_write(f"on_hand_unit-shipment({desired_shipment_id})")
+    t.append_write(f"add_on_hand_quantity({new_on_hand_quantity})")
+
+    # Desired shipment backordered update (if needed)
+    backorder_qty = current_on_hand_quantity - new_on_hand_quantity
+    if backorder_qty > 0:
+        if p > 0.5: # Simulate a find_or_create
+            t.append_read(f"backordered_unit-shipment({desired_shipment_id})")
+        else:
+            t.append_write(f"backordered_unit-shipment({desired_shipment_id})")
+        t.append_write(f"add_backordered_quantity({backorder_qty})")
+
+    # Reduce current shipment units
+    quantity_left = current_on_hand_quantity - backorder_qty
+    t.append_write(f"reduce_backordered_quantity({backorder_qty})")
+    if quantity_left > 0:
+        t.append_write(f"reduce_on_hand_quantity({new_on_hand_quantity})")
+
+    return t
+
+def spree_fulfillment_changer_sim(num_txn: int):
+    """
+    Example output:
+
+    ['r-shipment_id-backordered(40)', 'r-on_hand_unit-shipment(25)', 'w-add_on_hand_quantity(96)', 'w-reduce_backordered_quantity(-39)', 'w-reduce_on_hand_quantity(96)']
+    ['r-shipment_id-backordered(30)', 'r-on_hand_unit-shipment(96)', 'w-add_on_hand_quantity(30)', 'r-backordered_unit-shipment(96)', 'w-add_backordered_quantity(69)', 'w-reduce_backordered_quantity(69)', 'w-reduce_on_hand_quantity(30)']
+    ['r-shipment_id-backordered(36)', 'w-restock_current_quantity(3)', 'w-unstock_desired_quantity(96)', 'r-on_hand_unit-shipment(56)', 'w-add_on_hand_quantity(18)', 'w-reduce_backordered_quantity(-15)', 'w-reduce_on_hand_quantity(18)']
+    ['r-shipment_id-backordered(36)', 'w-restock_current_quantity(71)', 'w-unstock_desired_quantity(60)', 'w-on_hand_unit-shipment(48)', 'w-add_on_hand_quantity(54)', 'w-backordered_unit-shipment(48)', 'w-add_backordered_quantity(17)', 'w-reduce_backordered_quantity(17)', 'w-reduce_on_hand_quantity(54)']
+    ['r-shipment_id-backordered(85)', 'r-on_hand_unit-shipment(35)', 'w-add_on_hand_quantity(39)', 'r-backordered_unit-shipment(35)', 'w-add_backordered_quantity(38)', 'w-reduce_backordered_quantity(38)', 'w-reduce_on_hand_quantity(39)']
+    ['r-shipment_id-backordered(36)', 'w-on_hand_unit-shipment(42)', 'w-add_on_hand_quantity(35)', 'w-reduce_backordered_quantity(-6)', 'w-reduce_on_hand_quantity(35)']
+    ['r-shipment_id-backordered(49)', 'w-restock_current_quantity(77)', 'w-unstock_desired_quantity(90)', 'w-on_hand_unit-shipment(11)', 'w-add_on_hand_quantity(2)', 'w-backordered_unit-shipment(11)', 'w-add_backordered_quantity(75)', 'w-reduce_backordered_quantity(75)', 'w-reduce_on_hand_quantity(2)']
+    ['r-shipment_id-backordered(14)', 'w-on_hand_unit-shipment(92)', 'w-add_on_hand_quantity(7)', 'w-backordered_unit-shipment(92)', 'w-add_backordered_quantity(35)', 'w-reduce_backordered_quantity(35)', 'w-reduce_on_hand_quantity(7)']
+    ['r-shipment_id-backordered(63)', 'w-on_hand_unit-shipment(39)', 'w-add_on_hand_quantity(33)', 'w-reduce_backordered_quantity(-5)', 'w-reduce_on_hand_quantity(33)']
+    ['r-shipment_id-backordered(59)', 'w-restock_current_quantity(17)', 'w-unstock_desired_quantity(74)', 'r-on_hand_unit-shipment(36)', 'w-add_on_hand_quantity(20)', 'w-reduce_backordered_quantity(-3)', 'w-reduce_on_hand_quantity(20)']
+    """
+    for _ in range(num_txn):
+        current_shipment_id = np.random.randint(1, 100)
+        desired_shipment_id = np.random.randint(1, 100)
+        current_stock_location_id = np.random.randint(1, 100)
+        desired_stock_location_id = np.random.randint(1, 100)
+        current_on_hand_quantity = np.random.randint(1, 100)
+        unstock_quantity = np.random.randint(1, 100)
+        new_on_hand_quantity = np.random.randint(1, 100)
+        order_state = np.random.choice(["complete", "incomplete"], p=[0.5, 0.5])
+        p = np.random.rand()
+
+        result = spree_fulfillment_changer_generator(
+            current_shipment_id,
+            desired_shipment_id,
+            current_stock_location_id,
+            desired_stock_location_id,
+            current_on_hand_quantity,
+            unstock_quantity,
+            new_on_hand_quantity,
+            order_state,
+            p,
+        )
+        print(result)
 
 ### Other Transactions
+
 
 def spree_find_order_by_token_or_user_generator():
     """
@@ -297,9 +368,11 @@ def main():
     # Number of transactions to simulate per transaction type
     num_txn_1 = 10
     num_txn_2 = 10
+    num_txn_3 = 10
 
     # spree_adjustment_update_sim(num_txn_1) # Transaction 1
-    spree_checkout_controller_sim(num_txn_2) # Transaction 2
+    # spree_checkout_controller_sim(num_txn_2) # Transaction 2
+    spree_fulfillment_changer_sim(num_txn_3) # Transaction 3
 
 if __name__ == "__main__":
     main()
