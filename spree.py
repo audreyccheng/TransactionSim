@@ -6,6 +6,28 @@
 import numpy as np
 from transaction import Transaction
 
+class Order:
+    def __init__(self):
+        self.order_id = np.random.randint(1, 100)
+        self.variant_id = np.random.randint(1, 50)
+        self.quantity = np.random.randint(1, 10)
+
+class LineItem:
+    def __init__(self):
+        self.id = np.random.randint(1, 50)
+        self.quantity = np.random.randint(1, 10)
+        self.exists: bool = np.random.binomial(1, 0.9) 
+
+class StockItem:
+    def __init__(self):
+        self.id = np.random.randint(1, 500)
+        self.count_on_hand = np.random.randint(0, 10) # We assume count_on_hand is relatively small otherwise BackorderedUnit would already be fulfilled 
+
+class BackorderedUnit:
+    def __init__(self, quantity = np.random.randint(1, 10)):
+        self.id = np.random.randint(1, 500)
+        self.quantity = quantity
+
 ### Transaction 1 (Transaction 5 from Tang et al.) ###
 def spree_adjustment_update_generator(adjustment: dict) -> list[str]:
     """
@@ -145,8 +167,8 @@ def spree_fulfillment_changer_generator(
     https://github.com/spree/spree/blob/249aa157ab33d94cffff779d66039c1b4580f6f4/core/app/models/spree/fulfilment_changer.rb#L41C5-L51C1
     
     PSEUDOCODE:
-    In: current_stock_location, desired_stock_location, order, variant, shipment, 
-        current_on_hand_quantity, unstock_quantity
+    In: current_shipment_id, desired_shipment_id, current_stock_location, desired_stock_location, 
+        current_on_hand_quantity, unstock_quantity, new_on_hand_quantity, order_state, p
     TRANSACTION START
 
     SELECT SUM(quantity) FROM inventory_units WHERE shipment_id = current_shipment.id AND variant_id = variant.id
@@ -254,37 +276,165 @@ def spree_fulfillment_changer_sim(num_txn: int):
         )
         print(result)
 
-### Other Transactions
-
-
-def spree_find_order_by_token_or_user_generator():
+### Transaction 4 ###
+def spree_remove_line_item_generator(order: Order, line_item: LineItem) -> list[str]:
     """
-    Transaction 1.
-    Lock-based transaction.
-    Purpose: Coordinate concurrent checkout.
-    Spree::Core::ControllerHelpers::Order#find_order_by_token_or_user
+    https://github.com/spree/spree/blob/249aa157ab33d94cffff779d66039c1b4580f6f4/core/app/services/spree/cart/remove_item.rb#L10
+    remove_from_line_item
 
-    https://github.com/spree/spree/blob/09e8024d8742c6f0b8bd5ee266e3e25a65d66523/core/lib/spree/core/controller_helpers/order.rb#L133
     PSEUDOCODE:
-    In:
+    In: 
     TRANSACTION START
+
+    SELECT * FROM line_items WHERE order_id = order.id AND variant_id = variant.id
+
+    IF line_item == null:
+        TRANSACTION COMMIT
+
+    if line_item.quantity - quantity <= 0:
+        DELETE FROM line_items WHERE id = line_item.id;
+    else:
+        UPDATE line_items SET quantitline_item.quaantity = line_item.quantity - quantity WHERE id = line_item.id
+
     TRANSACTION COMMIT
     """
+    t = Transaction()
 
-def spree_handle_action_call_generator():
+    # Read lock on the line item
+    t.append_read(f"order_id-variant_id({order.order_id, order.variant_id})")
+
+    # Commit transaction if line item does not exist
+    if not line_item.exists:
+        return t 
+
+    # Check if new quantity is <= 0
+    if line_item.quantity - order.quantity <= 0:
+        t.append_write(f"delete-line_item-id({line_item.id})")
+    else:
+        t.append_write(f"update-line_item-id({line_item.id})")
+
+    return t
+
+def spree_remove_line_item_sim(num_txn: int):
     """
-    Transaction 2.
-    Lock-based transaction.
-    Purpose: Coordinate concurrent checkout.
-    Spree::PaymentMethod::StoreCredit#handle_action_call
+    Example output:
+    ['r-order_id-variant_id((9, 40))', 'w-delete-line_item-id(48)']
+    ['r-order_id-variant_id((46, 36))', 'w-update-line_item-id(37)']
+    ['r-order_id-variant_id((5, 20))', 'w-update-line_item-id(44)']
+    ['r-order_id-variant_id((1, 23))', 'w-delete-line_item-id(25)']
+    ['r-order_id-variant_id((43, 33))', 'w-delete-line_item-id(2)']
+    ['r-order_id-variant_id((2, 30))', 'w-update-line_item-id(8)']
+    ['r-order_id-variant_id((44, 49))', 'w-delete-line_item-id(45)']
+    ['r-order_id-variant_id((38, 2))', 'w-delete-line_item-id(38)']
+    ['r-order_id-variant_id((33, 48))', 'w-delete-line_item-id(49)']
+    ['r-order_id-variant_id((27, 27))']
 
-    https://github.com/spree/spree/blob/09e8024d8742c6f0b8bd5ee266e3e25a65d66523/core/app/models/spree/payment_method/store_credit.rb#L110
+    """
+    for _ in range(num_txn):
+        order = Order()
+        line_item = LineItem()
+        result = spree_remove_line_item_generator(order, line_item)
+        print(result)
+
+### Transaction 5 (Transaction 10 from Tang et al.) ###
+def spree_stock_item_update_generator(value: int, stock_item: StockItem, backordered_units: list[BackorderedUnit]) -> list[str]:
+    """
+    Transaction 10.
+    Lock-based transaction.
+    Purpose: Coordinate concurrent stock updating
+    app/models/spree/stock_item.rb:37
+
+    adjust_count_on_hand
+    https://github.com/spree/spree/blob/840041ef5747387d3752c4d0acf4e38ff8a35292/core/app/models/spree/stock_item.rb#L37
     PSEUDOCODE:
-    In:
+    In: value, stock_item, backordered_units
     TRANSACTION START
+
+    SELECT * FROM stock_items WHERE id = stock_item.id FOR UPDATE
+    new_count = stock_item.count_on_hand + value
+    orders_to_process = value
+    
+    if orders_to_process <= 0: 
+        TRANSACTION COMMIT
+
+    SELECT * FROM inventory_units WHERE stock_item_id = stock_item.id AND state = 'backordered' ORDER BY created_at ASC LIMIT difference;
+
+    for backordered_unit in backordered_units:
+        if orders_to_process <= 0:
+            TRANSACTION COMMIT
+
+        if backordered_unit.quantity > orders_to_process:
+            -- Split the backordered unit into two units
+            INSERT INTO inventory_units VALUES quantity = orders_to_process, id = split_unit.id
+            UPDATE inventory_units SET quantity = quantity - orders_to_process WHERE id = backordered_unit.id
+
+            UPDATE inventory_units SET state = 'fulfilled' WHERE id = split_unit.id
+        else:
+            UPDATE inventory_units SET state = 'fulfilled' WHERE id = backordered_unit.id
+        orders_to_process = orders_to_process - backordered_unit.quantity
+
+    UPDATE stock_items SET count_on_hand = new_count WHERE id = stock_item.id
+
     TRANSACTION COMMIT
     """
+    t = Transaction()
 
+    # Read the stock item
+    t.append_read(f"stock_item_id, count_on_hand({stock_item.id, stock_item.count_on_hand})")
+    new_count = stock_item.count_on_hand + value
+    orders_to_process = value
+
+    if orders_to_process <= 0:
+        return t
+    
+    # Read backordered units
+    t.append_read(f"backordered_units_num({len(backordered_units)})")
+    
+    for backordered_unit in backordered_units:
+        if orders_to_process <= 0:
+            return t
+
+        if backordered_unit.quantity > orders_to_process:
+            # Simulate splitting the backordered unit
+            split_unit = BackorderedUnit(backordered_unit.quantity)
+            t.append_write(f"split_unit_id({split_unit.id})")
+            t.append_write(f"backordered_unit_new_count({backordered_unit.quantity - orders_to_process})") # Update quantity on backordered unit
+            t.append_write(f"fulfilled_split_unit_count({split_unit.quantity})")
+        else:
+            t.append_write(f"fulfilled_backordered_unit_count({backordered_unit.quantity})")
+
+        orders_to_process -= backordered_unit.quantity
+
+    # Update the stock item count
+    t.append_write(f"stock_item_new_count({new_count})")
+
+    return t
+
+def spree_stock_item_update_sim(num_txn: int):
+    """
+    Example output:
+
+    ['r-stock_item_id, count_on_hand((487, 8))', 'r-backordered_units_num(1)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(82)']
+    ['r-stock_item_id, count_on_hand((252, 1))', 'r-backordered_units_num(4)', 'w-fulfilled_backordered_unit_count(3)', 'w-split_unit_id(333)', 'w-backordered_unit_new_count(2)', 'w-fulfilled_split_unit_count(3)']
+    ['r-stock_item_id, count_on_hand((306, 2))', 'r-backordered_units_num(1)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(39)']
+    ['r-stock_item_id, count_on_hand((169, 4))', 'r-backordered_units_num(1)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(23)']
+    ['r-stock_item_id, count_on_hand((290, 3))', 'r-backordered_units_num(0)', 'w-stock_item_new_count(33)']
+    ['r-stock_item_id, count_on_hand((97, 4))', 'r-backordered_units_num(0)', 'w-stock_item_new_count(74)']
+    ['r-stock_item_id, count_on_hand((313, 4))', 'r-backordered_units_num(2)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(71)']
+    ['r-stock_item_id, count_on_hand((267, 2))', 'r-backordered_units_num(4)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(14)']
+    ['r-stock_item_id, count_on_hand((264, 2))', 'r-backordered_units_num(2)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(24)']
+    ['r-stock_item_id, count_on_hand((40, 6))', 'r-backordered_units_num(4)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-fulfilled_backordered_unit_count(3)', 'w-stock_item_new_count(69)']
+    """
+    for _ in range(num_txn):
+        value = np.random.randint(0, 100)
+        stock_item = StockItem()
+        backordered_units = [BackorderedUnit() for _ in range(np.random.randint(0, 5))]
+        result = spree_stock_item_update_generator(value, stock_item, backordered_units)
+        print(result)
+
+
+### Other Transactions 
+# Note: had a tough time finding the transactions for these code snippets.
 
 def spree_ensure_sufficient_stock_lines_generator():
     """
@@ -328,21 +478,6 @@ def spree_line_items_in_stock_generator():
     TRANSACTION COMMIT
     """
 
-def spree_stock_item_update_generator():
-    """
-    Transaction 10.
-    Lock-based transaction.
-    Purpose: Coordinate concurrent stock updating
-    app/models/spree/stock_item.rb:37
-
-    adjust_count_on_hand
-    https://github.com/spree/spree/blob/840041ef5747387d3752c4d0acf4e38ff8a35292/core/app/models/spree/stock_item.rb#L37
-    PSEUDOCODE:
-    In:
-    TRANSACTION START
-    TRANSACTION COMMIT
-    """
-
 # Skipping, cannot find in code
 def spree_find_order_generator():
     """
@@ -361,6 +496,49 @@ def spree_stock_item_checkout_generator():
     app/models/spree/stock_item.rb:14
     """
 
+# Skipping, after further investigation, these transactions do not involve contention
+def spree_find_order_by_token_or_user_generator():
+    """
+    Transaction 1.
+    Lock-based transaction.
+    Purpose: Coordinate concurrent checkout.
+    Spree::Core::ControllerHelpers::Order#find_order_by_token_or_user
+    Note: find_order_by_token_or_user is called by current_order but that is not a transactio
+    
+    https://github.com/spree/spree/blob/09e8024d8742c6f0b8bd5ee266e3e25a65d66523/core/lib/spree/core/controller_helpers/order.rb#L133
+    PSEUDOCODE:
+    In: order_token, current_user
+    TRANSACTION START
+
+    if order_token == null or current_user == null:
+        TRANSACTION COMMIT
+    
+    if adjustments:
+        SELECT * FROM orders WHERE order_id = current_user.id AND state != 'complete' FOR UPDATE;
+    else:
+        SELECT * FROM orders WHERE order_id = current_user.id AND state != 'complete' FOR UPDATE;
+        
+    incomplete_orders = SELECT * FROM orders WHERE user_id = current_user.id AND state != 'complete' FOR UPDATE;
+
+    TRANSACTION COMMIT
+    """
+
+# Skipping, could not find StoreCredit call event in codebase
+def spree_handle_action_call_generator():
+    """
+    Transaction 2.
+    Lock-based transaction.
+    Purpose: Coordinate concurrent checkout.
+    Spree::PaymentMethod::StoreCredit#handle_action_call
+    Note: possible actions are capture, void, credit, and cancel. Cannot find the call events for these actions.
+
+    https://github.com/spree/spree/blob/09e8024d8742c6f0b8bd5ee266e3e25a65d66523/core/app/models/spree/payment_method/store_credit.rb#L110
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+    TRANSACTION COMMIT
+    """
+
 def main():
     """
     Generate Spree transaction traces.
@@ -369,10 +547,14 @@ def main():
     num_txn_1 = 10
     num_txn_2 = 10
     num_txn_3 = 10
+    num_txn_4 = 10
+    num_txn_5 = 10
 
     # spree_adjustment_update_sim(num_txn_1) # Transaction 1
     # spree_checkout_controller_sim(num_txn_2) # Transaction 2
-    spree_fulfillment_changer_sim(num_txn_3) # Transaction 3
+    # spree_fulfillment_changer_sim(num_txn_3) # Transaction 3
+    # spree_remove_line_item_sim(num_txn_4) # Transaction 4
+    spree_stock_item_update_sim(num_txn_5) # Transaction 5
 
 if __name__ == "__main__":
     main()
