@@ -161,44 +161,62 @@ def rate_item_sim(num_transactions: int):
         print(transaction)
 
 ### Transaction 3 ###
-def create_order_payment_from_customer_payment(order, customer_payment, amount):
+def savePaymentInfo(request, response, model, payment_form, result):
     """
-    Purpose: Save order payment details
-    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
+    Purpose: save payment information
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework-web/src/main/java/org/broadleafcommerce/core/web/controller/checkout/BroadleafPaymentInfoController.java#L73C1-L104C1
     
     Pseudocode:
-    In: order_payments
+
+    In: carts, customers, saved_payments, customer_payments, order_payments
 
     TRANSACTION START
-    orderPayment = createOrderPayment(order, customerPayment)
-    INSERT INTO order_payments VALUES (amount, UNCONFIRMED_TRANSACTION_TYPE, orderPayment, customerPayment)
+    cart = SELECT * FROM carts WHERE id=cart_id
+    customer = SELECT * FROM customers WHERE id=customer_id
+    if payment_form.should_save_new_payment and !payment_form.should_use_customer_payment:
+        if customer_payment_id:
+            UPDATE saved_payments SET payment=payment_form where customer=customer
+        else:
+            INSERT INTO saved_payments (customer, payment_form)
+            payment_form.should_use_customer_payment = True
+    if payment_form.should_use_customer_payment:
+        customer_payment = SELECT * FROM customer_payments WHERE id = payment_form.get_customer_id()
+        if (SELECT * FROM cart_state WHERE token == customer_payment.token) == NULL:
+            orderPayment = createOrderPayment(order, customerPayment)
+            INSERT INTO order_payments VALUES (cart.amount, UNCONFIRMED_TRANSACTION_TYPE, orderPayment, customerPayment)
     TRANSACTION COMMIT
     """
-    UNCONFIRMED_TRANSACTION_TYPE = "unconfirmed type"
-    order_payment = (order, customer_payment)
+    cart_id = np.random.choice(1000)
+    customer_id = np.random.choice(1000)
     t = Transaction()
-    t.append_write(f"amount({amount})")
-    t.append_write(UNCONFIRMED_TRANSACTION_TYPE)
-    t.append_write(f"orderPayment({order_payment})")
-    t.append_write(f"customerPayment({customer_payment})")
+    t.append_read(f"cart({cart_id})")
+    t.append_read(f"customer({customer_id})")
+    should_use_customer_payment = bool(np.random.choice(2))
+    if np.random.choice(2):
+        if np.random.choice(2):
+            t.append_write(f"payment({payment_form})")
+        else:
+            t.append_write(f"payment({payment_form})")
+            should_use_customer_payment = True
+    if should_use_customer_payment:
+        t.append_read(f"customer_payment({payment_form})")
+        if np.random.choice(2):
+            t.append_write(f"order_payment({cart_id})")
     return t
 
 def order_payment_sim(num_transactions: int):
     """
     Example output:
 
-    ['w-amount(263.53)', 'w-unconfirmed type', 'w-orderPayment((110, 561))', 'w-customerPayment(561)']
-    ['w-amount(183.57)', 'w-unconfirmed type', 'w-orderPayment((379, 504))', 'w-customerPayment(504)']
-    ['w-amount(238.83)', 'w-unconfirmed type', 'w-orderPayment((498, 520))', 'w-customerPayment(520)']
-    ['w-amount(257.33)', 'w-unconfirmed type', 'w-orderPayment((681, 509))', 'w-customerPayment(509)']
-    ['w-amount(221.4)', 'w-unconfirmed type', 'w-orderPayment((223, 859))', 'w-customerPayment(859)']
+    ['r-cart(670)', 'r-customer(401)']
+    ['r-cart(60)', 'r-customer(972)', 'w-payment(177)', 'r-customer_payment(177)']
+    ['r-cart(272)', 'r-customer(639)', 'w-payment(177)', 'r-customer_payment(177)', 'w-order_payment(272)']
+    ['r-cart(961)', 'r-customer(260)', 'w-payment(177)']
+    ['r-cart(226)', 'r-customer(439)', 'w-payment(177)', 'r-customer_payment(177)', 'w-order_payment(226)']
     """
-    num_orders = 1000
-    num_customerPayment = 1000
+    payment_form = np.random.choice(1000)
     for _ in range(num_transactions):
-        t = create_order_payment_from_customer_payment(np.random.choice(range(num_orders)),
-                                                       np.random.choice(range(num_customerPayment)),
-                                                       round(np.random.normal(200, 50), 2))
+        t = savePaymentInfo(None, None, None, payment_form, None)
         print(t)
 
 ### Transaction 4 ###
