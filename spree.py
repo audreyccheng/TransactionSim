@@ -29,7 +29,7 @@ class BackorderedUnit:
         self.quantity = quantity
 
 ### Transaction 1 (Transaction 5 from Tang et al.) ###
-def spree_adjustment_update_generator(adjustment: dict) -> list[str]:
+def spree_adjustment_update_generator(adjustment: dict) -> Transaction:
     """
     Validation-based transaction.
     Purpose: Coordinate concurrent checkout.
@@ -93,7 +93,7 @@ def spree_adjustment_update_sim(num_txn: int):
         print(result)
 
 ### Transaction 2 (Transaction 4 from Tang et al.) ###
-def spree_checkout_controller_generator(order_id: int, input_data: dict) -> list[str]:
+def spree_checkout_controller_generator(order_id: int, input_data: dict) -> Transaction:
     """
     Transaction 4.
     Validation-based transaction.
@@ -162,7 +162,7 @@ def spree_fulfillment_changer_generator(
         new_on_hand_quantity: int,
         order_state: str,
         p: float,
-    ) -> list[str]:
+    ) -> Transaction:
     """
     https://github.com/spree/spree/blob/249aa157ab33d94cffff779d66039c1b4580f6f4/core/app/models/spree/fulfilment_changer.rb#L41C5-L51C1
     
@@ -277,7 +277,7 @@ def spree_fulfillment_changer_sim(num_txn: int):
         print(result)
 
 ### Transaction 4 ###
-def spree_remove_line_item_generator(order: Order, line_item: LineItem) -> list[str]:
+def spree_remove_line_item_generator(order: Order, line_item: LineItem) -> Transaction:
     """
     https://github.com/spree/spree/blob/249aa157ab33d94cffff779d66039c1b4580f6f4/core/app/services/spree/cart/remove_item.rb#L10
     remove_from_line_item
@@ -337,7 +337,7 @@ def spree_remove_line_item_sim(num_txn: int):
         print(result)
 
 ### Transaction 5 (Transaction 10 from Tang et al.) ###
-def spree_stock_item_update_generator(value: int, stock_item: StockItem, backordered_units: list[BackorderedUnit]) -> list[str]:
+def spree_stock_item_update_generator(value: int, stock_item: StockItem, backordered_units: list[BackorderedUnit]) -> Transaction:
     """
     Transaction 10.
     Lock-based transaction.
