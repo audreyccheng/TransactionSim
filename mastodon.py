@@ -319,12 +319,14 @@ def show_media_attachment(id):
     In: media_attachments
 
     lock_acquire(media_attachments)
+    TRANSACTION START
     media_attachment = SELECT * FROM media_attachments WHERE id=id
     authorize(media_attachment)
     if media_attachment.needs_redownload:
         download_file(id)
         media_attachment.created_at = now
         INSERT INTO media_attachments VALUES media_attachment, id
+    TRANSACTION COMMIT
     lock_release(media_attachments)
     return
     """
@@ -349,6 +351,41 @@ def show_media_attachment_sim(num_transactions: int):
         t = show_media_attachment(np.random.choice(1000))
         print(t)
 
+### Transaction 9 ###
+def create_marker(request):
+    """
+    Purpose: Create a marker
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/controllers/api/v1/markers_controller.rb#L17C2-L31C1
+    Pseudocode:
+    In: markers
+    TRANSACTION START   
+    for timeline in range(request):
+        marker = SELECT * FROM markers WHERE timeline=timeline
+        set_attributes(marker, request)
+        UPDATE markers SET marker = marker WHERE timeline = timeline
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    for _ in range(request):
+        marker = np.random.choice(1000)
+        t.append_read(f"markers({marker})")
+        t.append_write(f"markers({marker})")
+    return t
+
+def create_marker_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['r-markers(780)', 'w-markers(780)']
+    ['r-markers(794)', 'w-markers(794)', 'r-markers(58)', 'w-markers(58)']
+    ['r-markers(746)', 'w-markers(746)', 'r-markers(540)', 'w-markers(540)', 'r-markers(982)', 'w-markers(982)']
+    ['r-markers(174)', 'w-markers(174)']
+    ['r-markers(924)', 'w-markers(924)', 'r-markers(344)', 'w-markers(344)']
+    """
+    for _ in range(num_transactions):
+        t = create_marker(round(np.random.normal(2, 0.75)))
+        print(t)
+
 #######################
 ####   Simulation  ####
 #######################
@@ -365,6 +402,7 @@ def main():
     num_transactions_6 = 5
     num_transactions_7 = 5 
     num_transactions_8 = 5
+    num_transactions_9 = 5
 
     # Extra space for formatting
     print()
@@ -407,6 +445,11 @@ def main():
     # Transaction 8
     print("Generating Mastodon show media attachment simulation")
     show_media_attachment_sim(num_transactions_8)
+    print()
+
+    # Transaction 9
+    print("Generating Mastodon create marker simulation")
+    create_marker_sim(num_transactions_9)
     print()
 
 if __name__ == "__main__":
