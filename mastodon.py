@@ -7,53 +7,67 @@ the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto
 ### EXAMPLE OUTPUT ###
 
 Generating Mastodon increment counter cache simulation
-['w-cached_tallies(7, 82)']
-['w-cached_tallies(169, 83)', 'r-poll(169)', 'w-cached_tallies(169, 83)']
-['w-cached_tallies(102, 32)', 'r-poll(102)', 'w-cached_tallies(102, 32)']
-['w-cached_tallies(36, 2)', 'r-poll(36)', 'w-cached_tallies(36, 2)']
-['w-cached_tallies(191, 17)']
+['w-cached_tallies(17, 84)']
+['w-cached_tallies(47, 10)']
+['w-cached_tallies(143, 61)', 'r-poll(143)', 'w-cached_tallies(143, 61)']
+['w-cached_tallies(8, 70)', 'r-poll(8)', 'w-cached_tallies(8, 70)']
+['w-cached_tallies(93, 58)']
 
 Generating Mastodon create account simulation
+['w-account(781)']
+['w-account(769)']
 ['w-account(516)']
-['w-account(126)']
-['w-account(36)']
-['w-account(110)']
-['w-account(93)']
+['w-account(317)']
+['w-account(582)']
 
 Generating Mastodon update account simulation
-['w-account(341)']
-['w-account(992)']
-['w-account(611)']
-['w-account(58)']
-['w-account(651)']
+['w-account(591)']
+['w-account(727)']
+['w-account(388)']
+['w-account(816)']
+['w-account(392)']
 
 Generating Mastodon call simulation
-['w-[account(106), choice(2)]', 'w-[account(106), choice(2)]']
-['w-[account(109), choice(4)]', 'w-[account(109), choice(4)]', 'w-[account(109), choice(2)]']
-['w-[account(342), choice(1)]', 'w-[account(342), choice(3)]']
-['w-[account(44), choice(4)]', 'w-[account(44), choice(8)]']
-['w-[account(535), choice(2)]', 'w-[account(535), choice(8)]', 'w-[account(535), choice(4)]', 'w-[account(535), choice(4)]']
+['w-[account(468), choice(4)]', 'w-[account(468), choice(2)]', 'w-[account(468), choice(1)]', 'w-[account(468), choice(8)]']
+['w-[account(624), choice(7)]', 'w-[account(624), choice(5)]', 'w-[account(624), choice(0)]', 'w-[account(624), choice(1)]']
+['w-[account(664), choice(7)]', 'w-[account(664), choice(0)]', 'w-[account(664), choice(4)]', 'w-[account(664), choice(3)]']
+['w-[account(515), choice(5)]', 'w-[account(515), choice(0)]', 'w-[account(515), choice(6)]']
+['w-[account(393), choice(1)]', 'w-[account(393), choice(0)]', 'w-[account(393), choice(8)]', 'w-[account(393), choice(8)]']
 
 Generating Mastodon process status simulation
-['w-status(916)']
-['w-status(459)']
-['w-status(970)']
-['w-status(683)']
-['w-status(719)']
+['w-status(122)']
+['w-status(23)']
+['w-status(840)']
+['w-status(378)']
+['w-status(558)']
 
 Generating Mastodon process emoji simulation
-['w-emoji(60)']
-['w-emoji(949)']
-['w-emoji(173)']
-['w-emoji(698)']
-['w-emoji(620)']
+['w-emoji(529)']
+['w-emoji(886)']
+['w-emoji(280)']
+['w-emoji(203)']
+['w-emoji(364)']
 
 Generating Mastodon create backup simulation
-['w-backup(671)']
-['w-backup(573)']
-['w-backup(54)']
-['w-backup(261)']
-['w-backup(101)']
+['w-backup(873)']
+['w-backup(413)']
+['w-backup(508)']
+['w-backup(384)']
+['w-backup(356)']
+
+Generating Mastodon show media attachment simulation
+['r-media_attachments(110)']
+['r-media_attachments(497)']
+['r-media_attachments(935)']
+['r-media_attachments(200)']
+['r-media_attachments(439)', 'w-media_attachments(439)']
+
+Generating Mastodon create marker simulation
+['r-markers(780)', 'w-markers(780)']
+['r-markers(794)', 'w-markers(794)', 'r-markers(58)', 'w-markers(58)']
+['r-markers(746)', 'w-markers(746)', 'r-markers(540)', 'w-markers(540)', 'r-markers(982)', 'w-markers(982)']
+['r-markers(174)', 'w-markers(174)']
+['r-markers(924)', 'w-markers(924)', 'r-markers(344)', 'w-markers(344)']
 """
 
 import numpy as np
