@@ -309,6 +309,46 @@ def create_backup_sim(num_transactions: int):
         t = create_backup()
         print(t)
 
+### Transaction 8 ###
+def show_media_attachment(id):
+    """
+    Purpose: Show the media attachment with the given ID.
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/controllers/media_proxy_controller.rb#L18C3-L34C6
+
+    Pseudocode:
+    In: media_attachments
+
+    lock_acquire(media_attachments)
+    media_attachment = SELECT * FROM media_attachments WHERE id=id
+    authorize(media_attachment)
+    if media_attachment.needs_redownload:
+        download_file(id)
+        media_attachment.created_at = now
+        INSERT INTO media_attachments VALUES media_attachment, id
+    lock_release(media_attachments)
+    return
+    """
+    t = Transaction()
+    t.append_read(f"media_attachments({id})")
+    needs_redownload = np.random.binomial(1, 0.2)
+    if needs_redownload:
+        t.append_write(f"media_attachments({id})")
+    return t
+
+def show_media_attachment_sim(num_transactions: int):
+    """
+    Example output:
+
+    ['r-media_attachments(490)']
+    ['r-media_attachments(160)', 'w-media_attachments(160)']
+    ['r-media_attachments(137)']
+    ['r-media_attachments(231)']
+    ['r-media_attachments(611)']
+    """
+    for _ in range(num_transactions):
+        t = show_media_attachment(np.random.choice(1000))
+        print(t)
+
 #######################
 ####   Simulation  ####
 #######################
@@ -324,6 +364,7 @@ def main():
     num_transactions_5 = 5
     num_transactions_6 = 5
     num_transactions_7 = 5 
+    num_transactions_8 = 5
 
     # Extra space for formatting
     print()
@@ -361,6 +402,11 @@ def main():
     # Transaction 7
     print("Generating Mastodon create backup simulation")
     create_backup_sim(num_transactions_7)
+    print()
+
+    # Transaction 8
+    print("Generating Mastodon show media attachment simulation")
+    show_media_attachment_sim(num_transactions_8)
     print()
 
 if __name__ == "__main__":
