@@ -9,7 +9,6 @@
 # work as expected in Chinese). 
 
 import numpy as np
-import datetime
 from transaction import Transaction
 
 #################################
@@ -26,7 +25,7 @@ def scmsuite_internal_save_retail_generator(changed: bool, retail_store_id: int)
     
     https://github.com/doublechaintech/scm-biz-suite/blob/82cc55dea9660beb478879040ebd31f32fd33109/bizcore/WEB-INF/retailscm_core_src/com/doublechaintech/retailscm/retailstorecountrycenter/RetailStoreCountryCenterManagerImpl.java#L383-L402
     PSEUDOCODE:
-    In:
+    In: changed: bool, retail_store_id: int
     TRANSACTION START
     SELECT * FROM RetailStoreCountryCenter WHERE id = :retailStoreCountryCenter.id FOR UPDATE
     if changed:
@@ -60,20 +59,130 @@ def scmsuite_internal_save_retail_sim(num_txn: int) -> list[str]:
         result = scmsuite_internal_save_retail_generator(changed, retail_store_id)
         print(result)
 
+### Transaction 2 (Transaction 6 from Tang et al.) ###
+def scmsuite_add_supply_order_generator(retail_store_country_center_id: int, total_amount: float) -> Transaction:
+    """
+    Transaction 6.
+    Lock-based transaction.
+    Purpose: Coordinate concurrent data updating
+    RetailStoreCountryCenterManagerImpl.java#addXXX
+    
+    # Note that seller_id, title, contract are not included as they are keys for contention
+    addSupplyOrder
+    https://github.com/doublechaintech/scm-biz-suite/blob/82cc55dea9660beb478879040ebd31f32fd33109/bizcore/WEB-INF/retailscm_core_src/com/doublechaintech/retailscm/retailstorecountrycenter/RetailStoreCountryCenterManagerImpl.java#L2776-L2810
+    PSEUDOCODE:
+    In: retailStoreCountryCenterId: int, totalAmount: float
+    TRANSACTION START
+    # checkParamsForAddingSupplyOrder
+    SELECT id FROM RetailStoreCountryCenter WHERE id = retailStoreCountryCenterId
+
+    # loadRetailStoreCountryCenter
+    SELECT * FROM RetailStoreCountryCenter WHERE id = retailStoreCountryCenterId FOR UPDATE
+
+    INSERT INTO SupplyOrder (seller_id, title, contract, total_amount, retail_store_country_center_id) VALUES (:totalAmount, :retailStoreCountryCenterId)
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    t.append_read(f"check_params({retail_store_country_center_id})")
+    t.append_read(f"retail_store_country_center_id({retail_store_country_center_id})")
+    t.append_write(f"total_amount({total_amount})")
+    return t
+
+def scmsuite_add_supply_order_sim(num_txn: int) -> list[str]:
+    """
+    Example output:
+
+    ['r-check_params(21)', 'r-retail_store_country_center_id(21)', 'w-total_amount(35.01)']
+    ['r-check_params(45)', 'r-retail_store_country_center_id(45)', 'w-total_amount(73.91)']
+    ['r-check_params(28)', 'r-retail_store_country_center_id(28)', 'w-total_amount(70.52)']
+    ['r-check_params(23)', 'r-retail_store_country_center_id(23)', 'w-total_amount(47.1)']
+    ['r-check_params(47)', 'r-retail_store_country_center_id(47)', 'w-total_amount(83.11)']
+    ['r-check_params(43)', 'r-retail_store_country_center_id(43)', 'w-total_amount(35.78)']
+    ['r-check_params(24)', 'r-retail_store_country_center_id(24)', 'w-total_amount(49.58)']
+    ['r-check_params(33)', 'r-retail_store_country_center_id(33)', 'w-total_amount(3.93)']
+    ['r-check_params(43)', 'r-retail_store_country_center_id(43)', 'w-total_amount(61.11)']
+    ['r-check_params(39)', 'r-retail_store_country_center_id(39)', 'w-total_amount(30.23)']
+    """
+    for _ in range(num_txn):
+        retail_store_country_center_id = np.random.randint(1, 50)
+        total_amount = round(np.random.uniform(0, 100), 2)
+        result = scmsuite_add_supply_order_generator(retail_store_country_center_id, total_amount)
+        print(result)
 
 # Other functions
 
+# 7 lock-based	RetailStoreCountryCenterManagerImpl.java#updateXXX	
+# 8 lock-based	RetailStoreCountryCenterManagerImpl.java#updateXXX
+# 9 lock-based	RetailStoreCountryCenterManagerImpl.java#removeXXX
+# 10 lock-based	RetailStoreCountryCenterManagerImpl.java#removeXXXList
+# 11 lock-based	RetailStoreCountryCenterManagerImpl.java#copyXXXForm	
 
-# validation-based	com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getUpdateSQL	Coordinate concurrent data updating	
-# validation-based	com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getDeleteSQL	Coordinate concurrent data updating	
-# validation-based	com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getDeleteWithVersionSQL	Coordinate concurrent data updating
-# lock-based	RetailStoreCountryCenterManagerImpl.java#breakWithRetailStoreByXXX	Coordinate concurrent data updating
-# lock-based	RetailStoreCountryCenterManagerImpl.java#addXXX	Coordinate concurrent data updating	
-# lock-based	RetailStoreCountryCenterManagerImpl.java#updateXXX	Coordinate concurrent data updating	
-# lock-based	RetailStoreCountryCenterManagerImpl.java#updateXXXProperty	Coordinate concurrent data updating
-# lock-based	RetailStoreCountryCenterManagerImpl.java#removeXXX	Coordinate concurrent data updating
-# lock-based	RetailStoreCountryCenterManagerImpl.java#removeXXXList	Coordinate concurrent data updating
-# lock-based	RetailStoreCountryCenterManagerImpl.java#copyXXXForm	Coordinate concurrent data updating
+# The following 3 functions are validation-based transactions and don't have r/w operations to a database.
+def scmsuite() -> Transaction:
+    """
+    Transaction 2.
+    Validation-based transaction.
+    Purpose: Coordinate concurrent data updating
+    com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getUpdateSQL
+    
+    https://github.com/doublechaintech/scm-biz-suite/blob/82cc55dea9660beb478879040ebd31f32fd33109/bizcore/WEB-INF/retailscm_core_src/com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#L1060-L1073
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    return t
+
+def scmsuite() -> Transaction:
+    """
+    Transaction 3.
+    Validation-based transaction.
+    Purpose: Coordinate concurrent data updating
+    com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getDeleteSQL
+    
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    return t
+
+def scmsuite() -> Transaction:
+    """
+    Transaction 4.
+    Validation-based transaction.
+    Purpose: Coordinate concurrent data updating
+    com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getDeleteWithVersionSQL
+    
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    return t
+
+# This function no longer exists in the codebase
+def scmsuite() -> Transaction:
+    """
+    Transaction 5.
+    Lock-based transaction.
+    Purpose: Coordinate concurrent data updating
+    RetailStoreCountryCenterManagerImpl.java#breakWithRetailStoreByXXX
+    
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    return t
 
 def main():
     """
@@ -81,8 +190,10 @@ def main():
     """
     # Number of transactions to simulate per transaction type
     num_txn_1 = 10
+    num_txn_2 = 10
 
-    scmsuite_internal_save_retail_sim(num_txn_1) # Transaction 1
+    # scmsuite_internal_save_retail_sim(num_txn_1) # Transaction 1
+    scmsuite_add_supply_order_sim(num_txn_2) # Transaction 6
 
 if __name__ == '__main__':
     main()
