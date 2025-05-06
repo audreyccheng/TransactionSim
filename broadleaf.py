@@ -7,53 +7,53 @@ the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto
 ### EXAMPLE OUTPUT ###
 
 Generating Broadleaf update cart simulation
-['r-cart(30)', 'w-order(8)']
-['r-cart(92)', 'w-order(19)']
-['r-cart(50)', 'w-order(6)']
-['r-cart(64)', 'w-order(44)']
-['r-cart(68)', 'w-order(63)']
+['r-cart(6)', 'w-order(21)']
+['r-cart(48)', 'w-order(67)']
+['r-cart(97)', 'w-order(50)']
+['r-cart(45)', 'w-order(54)']
+['r-cart(98)', 'w-order(97)']
 
 Generating Broadleaf rate item simulation
-['r-summary(41)', 'r-detail(11)', 'w-detail(11)/rating(8)', 'w-summary(41)/rating(8)']
-['r-summary(99)', 'r-detail(89)', 'w-detail(89)/rating(3)', 'w-summary(99)/rating(3)']
-['r-summary(93)', 'r-detail(3)', 'w-detail(3)/rating(4)', 'w-summary(93)/rating(4)']
-['r-summary(77)', 'r-detail(3)', 'w-detail(3)/rating(8)', 'w-summary(77)/rating(8)']
-['r-summary(60)', 'r-detail(36)', 'w-detail(36)/rating(3)', 'w-summary(60)/rating(3)']
+['r-summary(81)', 'r-detail(20)', 'w-detail(20)/rating(5)', 'w-summary(81)/rating(5)']
+['r-summary(42)', 'r-detail(76)', 'w-detail(76)/rating(4)', 'w-summary(42)/rating(4)']
+['r-summary(14)', 'r-detail(13)', 'w-detail(13)/rating(6)', 'w-summary(14)/rating(6)']
+['r-summary(87)', 'r-detail(48)', 'w-detail(48)/rating(2)', 'w-summary(87)/rating(2)']
+['r-summary(26)', 'r-detail(95)', 'w-detail(95)/rating(8)', 'w-summary(26)/rating(8)']
 
 Generating Broadleaf order payment simulation
-['w-amount(224.15)', 'w-unconfirmed type', 'w-orderPayment((162, 457))', 'w-customerPayment(457)']
-['w-amount(134.06)', 'w-unconfirmed type', 'w-orderPayment((861, 86))', 'w-customerPayment(86)']
-['w-amount(166.35)', 'w-unconfirmed type', 'w-orderPayment((891, 439))', 'w-customerPayment(439)']
-['w-amount(194.08)', 'w-unconfirmed type', 'w-orderPayment((358, 624))', 'w-customerPayment(624)']
-['w-amount(218.44)', 'w-unconfirmed type', 'w-orderPayment((937, 765))', 'w-customerPayment(765)']
+['r-cart(639)', 'r-customer(224)', 'r-customer_payment(889)', 'w-order_payment(639)']
+['r-cart(514)', 'r-customer(763)', 'w-payment(889)', 'r-customer_payment(889)']
+['r-cart(632)', 'r-customer(427)', 'w-payment(889)']
+['r-cart(410)', 'r-customer(314)', 'w-payment(889)', 'r-customer_payment(889)', 'w-order_payment(410)']
+['r-cart(923)', 'r-customer(104)', 'r-customer_payment(889)']
 
 Generating Broadleaf save offer simulation
-['w-offerCode(758)', 'w-offer(758)']
-['w-offerCode(345)', 'w-offer(345)']
-['w-offerCode(951)', 'w-offer(951)']
-['w-offerCode(539)', 'w-offer(539)']
-['w-offerCode(97)', 'w-offer(97)']
+['w-offerCode(889)', 'w-offer(889)']
+['w-offerCode(424)', 'w-offer(424)']
+['w-offerCode(938)', 'w-offer(938)']
+['w-offerCode(609)', 'w-offer(609)']
+['w-offerCode(100)', 'w-offer(100)']
 
 Generating Broadleaf get offer simulation
-['r-offer(934)']
-['r-offer(570)']
-['r-offer(665)']
-['r-offer(872)']
-['r-offer(99)']
+['r-offer(669)']
+['r-offer(294)']
+['r-offer(710)']
+['r-offer(816)']
+['r-offer(340)']
 
 Generating Broadleaf get next id simulation
-['r-id(79)', 'w-id(79)', 'w-id(79)']
-['r-id(73)', 'w-id(73)', 'w-id(73)']
-['r-id(62)', 'w-id(62)', 'w-id(62)']
-['r-id(38)', 'w-id(38)']
-['r-id(44)', 'w-id(44)']
+['r-id(4)', 'w-id(4)']
+['r-id(3)', 'w-id(3)']
+['r-id(14)', 'w-id(14)']
+['r-id(86)', 'w-id(86)', 'w-id(86)']
+['r-id(11)', 'w-id(11)', 'w-id(11)']
 
 Generating Broadleaf decrement SKU simulation
-['r-quantity(88)', 'w-quantity(88)', 'r-quantity(25)', 'w-quantity(25)', 'r-quantity(66)', 'w-quantity(66)', 'r-quantity(57)', 'w-quantity(57)']
-['r-quantity(27)', 'w-quantity(27)', 'r-quantity(36)', 'w-quantity(36)', 'r-quantity(60)', 'w-quantity(60)', 'r-quantity(14)', 'w-quantity(14)']
-['r-quantity(82)', 'w-quantity(82)', 'r-quantity(28)', 'w-quantity(28)', 'r-quantity(26)', 'w-quantity(26)', 'r-quantity(24)', 'w-quantity(24)']
-['r-quantity(47)', 'w-quantity(47)', 'r-quantity(45)', 'w-quantity(45)', 'r-quantity(53)', 'w-quantity(53)', 'r-quantity(94)', 'w-quantity(94)']
-['r-quantity(85)', 'w-quantity(85)', 'r-quantity(55)', 'w-quantity(55)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(38)', 'w-quantity(38)']
+['r-quantity(21)', 'w-quantity(21)', 'r-quantity(27)', 'w-quantity(27)', 'r-quantity(63)', 'w-quantity(63)', 'r-quantity(65)', 'w-quantity(65)']
+['r-quantity(27)', 'w-quantity(27)', 'r-quantity(80)', 'w-quantity(80)', 'r-quantity(32)', 'w-quantity(32)', 'r-quantity(6)', 'w-quantity(6)']
+['r-quantity(58)', 'w-quantity(58)', 'r-quantity(93)', 'w-quantity(93)', 'r-quantity(91)', 'w-quantity(91)', 'r-quantity(63)', 'w-quantity(63)']
+['r-quantity(38)', 'w-quantity(38)', 'r-quantity(71)', 'w-quantity(71)', 'r-quantity(19)', 'w-quantity(19)', 'r-quantity(7)', 'w-quantity(7)']
+['r-quantity(57)', 'w-quantity(57)', 'r-quantity(2)', 'w-quantity(2)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(61)', 'w-quantity(61)']
 """
 
 import numpy as np
