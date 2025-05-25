@@ -170,7 +170,7 @@ def update_account():
 
     TRANSACTION START
     account = SELECT * FROM accounts WHERE id = account_id
-    // Set account attributes
+    // ... Set account attributes
     INSERT INTO accounts VALUES account
     TRANSACTION COMMIT
 
@@ -234,6 +234,28 @@ def call_sim(num_transactions: int):
             None,
             [np.random.choice(10) for _ in range(int(round(np.random.normal(3, 1))))],
         )
+        print(t)
+
+### Transaction 4.5 ###
+def deliver_votes():
+    """
+    Deliver vote totals
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/services/vote_service.rb#L9C1-L43C10
+
+    Pseudocode:
+    votes = SELECT * FROM poll
+    for vote in votes:
+        send(vote)
+    
+    This is the associated read for transaction 4.
+    """
+    t = Transaction()
+    t.append_read(f"votes")
+    return t
+
+def deliver_votes_sim(num_transactions):
+    for _ in range(num_transactions):
+        t = deliver_votes()
         print(t)
 
 
