@@ -187,14 +187,14 @@ def update_account_sim(num_transactions: int):
     """
     Example output:
 
-    ['w-account(937)']
-    ['w-account(316)']
-    ['w-account(91)']
-    ['w-account(83)']
-    ['w-account(563)']
+    ['r-account(138)', 'w-account(138)']
+    ['r-account(896)', 'w-account(896)']
+    ['r-account(760)', 'w-account(760)']
+    ['r-account(50)', 'w-account(50)']
+    ['r-account(4)', 'w-account(4)']
     """
     for _ in range(num_transactions):
-        t = create_account()
+        t = update_account()
         print(t)
 
 
@@ -346,11 +346,11 @@ def process_emoji_sim(num_transactions: int):
     """
     Example output:
 
-    ['w-emoji(204)']
-    ['w-emoji(660)']
-    ['w-emoji(872)']
-    ['w-emoji(968)']
-    ['w-emoji(699)']
+    ['r-emoji58']
+    ['r-emoji670', 'w-emoji(670)']
+    ['r-emoji292']
+    ['r-emoji127', 'w-emoji(127)']
+    ['r-emoji551', 'w-emoji(551)']
     """
     for _ in range(num_transactions):
         t = process_emoji(None)
