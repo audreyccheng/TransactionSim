@@ -272,6 +272,25 @@ def process_status_sim(num_transactions: int):
         t = process_status()
         print(t)
 
+### Transaction 5.5 ###
+def find_existing_status():
+    """
+    Find status that was inserted using Transaction 5. This is the read associated with Transaction 5.
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/lib/activitypub/activity/create.rb#L79C1-L83C6
+
+    Pseudocode:
+    In: status, status_id
+    SELECT * FROM status WHERE id=status_id
+    """
+    t = Transaction()
+    new_status = np.random.choice(1000)
+    t.append_write(f"status({new_status})")
+    return t
+
+def find_existing_status_sim(num_transactions: int):
+    for _ in range(num_transactions):
+        t = find_existing_status()
+        print(t)
 
 ### Transaction 6 ###
 def process_emoji(tag):
