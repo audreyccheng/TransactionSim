@@ -1,7 +1,7 @@
 """
 Transaction simulations for Mastodon: https://github.com/mastodon/mastodon/tree/main
 Uses PostgreSQL
-Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good, 
+Analyzed in Tang et al. Ad Hoc Transactions in Web Applications: The Good,
 the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto-sigmod22.pdf
 
 ### EXAMPLE OUTPUT ###
@@ -77,6 +77,7 @@ from transaction import Transaction
 ####   Simulator functions   ####
 #################################
 
+
 ### Transaction 1 ###
 def increment_counter_cache(poll_id, choice):
     """
@@ -104,6 +105,7 @@ def increment_counter_cache(poll_id, choice):
         t.append_write(f"cached_tallies({poll_id}, {choice})")
     return t
 
+
 def increment_counter_cache_sim(num_transactions: int):
     """
     Example output:
@@ -117,6 +119,7 @@ def increment_counter_cache_sim(num_transactions: int):
     for _ in range(num_transactions):
         t = increment_counter_cache(np.random.choice(200), np.random.choice(100))
         print(t)
+
 
 ### Transaction 2 ###
 def create_account():
@@ -133,12 +136,13 @@ def create_account():
     INSERT INTO accounts VALUES account
     TRANSACTION COMMIT
 
-    We represent every account as an integer between 1 and 1000.
+    We represent every account as an integer between 1 and 1000. The read occurs in update_account().
     """
     t = Transaction()
     account_id = np.random.choice(1000)
     t.append_write(f"account({account_id})")
     return t
+
 
 def create_account_sim(num_transactions: int):
     """
@@ -154,18 +158,19 @@ def create_account_sim(num_transactions: int):
         t = create_account()
         print(t)
 
+
 ### Transaction 3 ###
 def update_account():
     """
     Purpose: update an account
-    Source code: https://github.com/mastodon/mastodon/blob/main/app/services/activitypub/process_account_service.rb#L87C3-L98C6 
+    Source code: https://github.com/mastodon/mastodon/blob/main/app/services/activitypub/process_account_service.rb#L87C3-L98C6
 
     Pseudocode:
-    In: accounts
+    In: accounts, account_id
 
-    account = Account()
-    # Set account attributes
     TRANSACTION START
+    account = SELECT * FROM accounts WHERE id = account_id
+    // Set account attributes
     INSERT INTO accounts VALUES account
     TRANSACTION COMMIT
 
@@ -173,8 +178,10 @@ def update_account():
     """
     t = Transaction()
     account_id = np.random.choice(1000)
+    t.append_read(f"account({account_id})")
     t.append_write(f"account({account_id})")
     return t
+
 
 def update_account_sim(num_transactions: int):
     """
@@ -189,6 +196,7 @@ def update_account_sim(num_transactions: int):
     for _ in range(num_transactions):
         t = create_account()
         print(t)
+
 
 ### Transaction 4 ###
 def call(account, poll, choices):
@@ -209,6 +217,7 @@ def call(account, poll, choices):
         t.append_write(f"[account({account}), choice({choice})]")
     return t
 
+
 def call_sim(num_transactions: int):
     """
     Example output:
@@ -220,8 +229,13 @@ def call_sim(num_transactions: int):
     ['w-[account(837), choice(9)]', 'w-[account(837), choice(9)]', 'w-[account(837), choice(0)]']
     """
     for _ in range(num_transactions):
-        t = call(np.random.choice(1000), None, [np.random.choice(10) for _ in range(int(round(np.random.normal(3, 1))))])
+        t = call(
+            np.random.choice(1000),
+            None,
+            [np.random.choice(10) for _ in range(int(round(np.random.normal(3, 1))))],
+        )
         print(t)
+
 
 ### Transaction 5 ###
 def process_status():
@@ -243,6 +257,7 @@ def process_status():
     t.append_write(f"status({new_status})")
     return t
 
+
 def process_status_sim(num_transactions: int):
     """
     Example output:
@@ -256,6 +271,7 @@ def process_status_sim(num_transactions: int):
     for _ in range(num_transactions):
         t = process_status()
         print(t)
+
 
 ### Transaction 6 ###
 def process_emoji(tag):
@@ -277,6 +293,7 @@ def process_emoji(tag):
     t.append_write(f"emoji({emoji})")
     return t
 
+
 def process_emoji_sim(num_transactions: int):
     """
     Example output:
@@ -291,12 +308,13 @@ def process_emoji_sim(num_transactions: int):
         t = process_emoji(None)
         print(t)
 
+
 ### Transaction 7 ###
 def create_backup():
     """
     Purpose: Create a backup
     Source code: https://github.com/mastodon/mastodon/blob/main/app/controllers/settings/exports_controller.rb#L16C1-L27C6
-    
+
     Pseudocode:
     In: backups
     backup = new_backup()
@@ -308,6 +326,7 @@ def create_backup():
     backup_id = np.random.choice(1000)
     t.append_write(f"backup({backup_id})")
     return t
+
 
 def create_backup_sim(num_transactions: int):
     """
@@ -322,6 +341,7 @@ def create_backup_sim(num_transactions: int):
     for _ in range(num_transactions):
         t = create_backup()
         print(t)
+
 
 ### Transaction 8 ###
 def show_media_attachment(id):
@@ -351,6 +371,7 @@ def show_media_attachment(id):
         t.append_write(f"media_attachments({id})")
     return t
 
+
 def show_media_attachment_sim(num_transactions: int):
     """
     Example output:
@@ -365,6 +386,7 @@ def show_media_attachment_sim(num_transactions: int):
         t = show_media_attachment(np.random.choice(1000))
         print(t)
 
+
 ### Transaction 9 ###
 def create_marker(request):
     """
@@ -372,7 +394,7 @@ def create_marker(request):
     Source code: https://github.com/mastodon/mastodon/blob/main/app/controllers/api/v1/markers_controller.rb#L17C2-L31C1
     Pseudocode:
     In: markers
-    TRANSACTION START   
+    TRANSACTION START
     for timeline in range(request):
         marker = SELECT * FROM markers WHERE timeline=timeline
         set_attributes(marker, request)
@@ -385,6 +407,7 @@ def create_marker(request):
         t.append_read(f"markers({marker})")
         t.append_write(f"markers({marker})")
     return t
+
 
 def create_marker_sim(num_transactions: int):
     """
@@ -400,9 +423,11 @@ def create_marker_sim(num_transactions: int):
         t = create_marker(round(np.random.normal(2, 0.75)))
         print(t)
 
+
 #######################
 ####   Simulation  ####
 #######################
+
 
 def main():
     """
@@ -414,7 +439,7 @@ def main():
     num_transactions_4 = 5
     num_transactions_5 = 5
     num_transactions_6 = 5
-    num_transactions_7 = 5 
+    num_transactions_7 = 5
     num_transactions_8 = 5
     num_transactions_9 = 5
 
@@ -465,6 +490,7 @@ def main():
     print("Generating Mastodon create marker simulation")
     create_marker_sim(num_transactions_9)
     print()
+
 
 if __name__ == "__main__":
     main()
