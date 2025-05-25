@@ -236,6 +236,7 @@ def call_sim(num_transactions: int):
         )
         print(t)
 
+
 ### Transaction 4.5 ###
 def deliver_votes():
     """
@@ -246,12 +247,13 @@ def deliver_votes():
     votes = SELECT * FROM poll
     for vote in votes:
         send(vote)
-    
+
     This is the associated read for transaction 4.
     """
     t = Transaction()
     t.append_read(f"votes")
     return t
+
 
 def deliver_votes_sim(num_transactions):
     for _ in range(num_transactions):
@@ -294,6 +296,7 @@ def process_status_sim(num_transactions: int):
         t = process_status()
         print(t)
 
+
 ### Transaction 5.5 ###
 def find_existing_status():
     """
@@ -309,10 +312,12 @@ def find_existing_status():
     t.append_write(f"status({new_status})")
     return t
 
+
 def find_existing_status_sim(num_transactions: int):
     for _ in range(num_transactions):
         t = find_existing_status()
         print(t)
+
 
 ### Transaction 6 ###
 def process_emoji(tag):
@@ -331,7 +336,9 @@ def process_emoji(tag):
     """
     emoji = np.random.choice(1000)
     t = Transaction()
-    t.append_write(f"emoji({emoji})")
+    t.append_read(f"emoji{emoji}")
+    if np.random.choice(2):
+        t.append_write(f"emoji({emoji})")
     return t
 
 
