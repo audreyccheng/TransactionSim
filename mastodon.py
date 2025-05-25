@@ -322,11 +322,11 @@ def process_emoji(tag):
 
     Pseudocode:
     In: emojis
-    # Check if emoji already exists and return if so
+    emoji = SELECT * FROM emojis WHERE tag=tag
+    return if emoji is not nil
     # Otherwise:
-    emoji = new_emoji()
     TRANSACTION START
-    INSERT INTO emojis VALUES emoji
+    INSERT INTO emojis VALUES new_emoji()
     TRANSACTION COMMIT
     """
     emoji = np.random.choice(1000)
