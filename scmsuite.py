@@ -109,16 +109,9 @@ def scmsuite_add_supply_order_sim(num_txn: int) -> list[str]:
         result = scmsuite_add_supply_order_generator(retail_store_country_center_id, total_amount)
         print(result)
 
-# Other functions
 
-# 7 lock-based	RetailStoreCountryCenterManagerImpl.java#updateXXX	
-# 8 lock-based	RetailStoreCountryCenterManagerImpl.java#updateXXX
-# 9 lock-based	RetailStoreCountryCenterManagerImpl.java#removeXXX
-# 10 lock-based	RetailStoreCountryCenterManagerImpl.java#removeXXXList
-# 11 lock-based	RetailStoreCountryCenterManagerImpl.java#copyXXXForm	
-
-# The following 3 functions are validation-based transactions and don't have r/w operations to a database.
-def scmsuite() -> Transaction:
+### Transaction 3 (Transaction 2 from Tang et al.) ###
+def scmsuite_get_update_sql_generator(id: int) -> Transaction:
     """
     Transaction 2.
     Validation-based transaction.
@@ -126,14 +119,137 @@ def scmsuite() -> Transaction:
     com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#getUpdateSQL
     
     https://github.com/doublechaintech/scm-biz-suite/blob/82cc55dea9660beb478879040ebd31f32fd33109/bizcore/WEB-INF/retailscm_core_src/com/doublechaintech/retailscm/CommonJDBCTemplateDAO.java#L1060-L1073
+    getUpdateSQL is called https://github.com/doublechaintech/scm-biz-suite/blob/82cc55dea9660beb478879040ebd31f32fd33109/bizcore/WEB-INF/retailscm_core_src/com/doublechaintech/retailscm/goodsshelf/GoodsShelfJDBCTemplateDAO.java#L812-L818
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+    SELECT * FROM GoodsShelf WHERE id = :id FOR UPDATE
+    UPDATE GoodsShelf SET name = :name, position = :position, description = :description WHERE id = :id
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    t.append_read(f"goods_shelf({id})")
+    t.append_write(f"goods_shelf({id})")
+    return t
+
+def scmsuite_get_update_sql_sim(num_txn: int) -> list[str]:
+    """
+    Example output:
+
+    ['r-goods_shelf(26)', 'w-goods_shelf(26)']
+    ['r-goods_shelf(13)', 'w-goods_shelf(13)']
+    ['r-goods_shelf(30)', 'w-goods_shelf(30)']
+    ['r-goods_shelf(15)', 'w-goods_shelf(15)']
+    ['r-goods_shelf(4)', 'w-goods_shelf(4)']
+    ['r-goods_shelf(19)', 'w-goods_shelf(19)']
+    ['r-goods_shelf(1)', 'w-goods_shelf(1)']
+    ['r-goods_shelf(42)', 'w-goods_shelf(42)']
+    ['r-goods_shelf(15)', 'w-goods_shelf(15)']
+    ['r-goods_shelf(45)', 'w-goods_shelf(45)']
+    """
+    for _ in range(num_txn):
+        id = np.random.randint(1, 50)
+        result = scmsuite_get_update_sql_generator(id)
+        print(result)
+
+
+### Transaction 4 (Transaction 11 from Tang et al.) ###
+def scmsuite_copy_catalog_form_generator(retail_store_id: int, catalog_id: int, catalog_version: int) -> Transaction:
+    """
+    Transaction 3.
+    Lock-based transaction.
+    RetailStoreCountryCenterManagerImpl.java#copyCatalogForm
+
+
     PSEUDOCODE:
     In:
     TRANSACTION START
 
+    SELECT * FROM retail_store_country_center WHERE id = retailStoreCountryCenterId FOR UPDATE
+    SELECT * FROM catalog WHERE id = catalogId AND version = catalogVersion;
+    UPDATE retail_store_country_center SET catalog_list = modified_catalog_list WHERE id = retailStoreCountryCenterId;
+
     TRANSACTION COMMIT
     """
     t = Transaction()
+    t.append_read(f"retail_store_id({retail_store_id})")
+    t.append_read(f"catalog_id,catalog_version({catalog_id, catalog_version})")
+    t.append_write(f"catalog_new_version({catalog_version+1})")
     return t
+
+def scmsuite_copy_catalog_form_sim(num_txn: int) -> list[str]:
+    """
+    Example output:
+
+    ['r-retail_store_id(14)', 'r-catalog_id,catalog_version((7, 1))', 'w-catalog_new_version(2)']
+    ['r-retail_store_id(36)', 'r-catalog_id,catalog_version((23, 2))', 'w-catalog_new_version(3)']
+    ['r-retail_store_id(40)', 'r-catalog_id,catalog_version((33, 9))', 'w-catalog_new_version(10)']
+    ['r-retail_store_id(37)', 'r-catalog_id,catalog_version((16, 1))', 'w-catalog_new_version(2)']
+    ['r-retail_store_id(4)', 'r-catalog_id,catalog_version((6, 8))', 'w-catalog_new_version(9)']
+    ['r-retail_store_id(9)', 'r-catalog_id,catalog_version((8, 1))', 'w-catalog_new_version(2)']
+    ['r-retail_store_id(15)', 'r-catalog_id,catalog_version((38, 8))', 'w-catalog_new_version(9)']
+    ['r-retail_store_id(41)', 'r-catalog_id,catalog_version((25, 2))', 'w-catalog_new_version(3)']
+    ['r-retail_store_id(37)', 'r-catalog_id,catalog_version((5, 7))', 'w-catalog_new_version(8)']
+    ['r-retail_store_id(32)', 'r-catalog_id,catalog_version((36, 5))', 'w-catalog_new_version(6)']
+    """
+
+    for _ in range(num_txn):
+        retail_store_id = np.random.randint(1, 50)
+        catalog_id = np.random.randint(1, 50)
+        catalog_version = np.random.randint(1, 10)
+        result = scmsuite_copy_catalog_form_generator(retail_store_id, catalog_id, catalog_version)
+        print(result)
+
+
+### Transaction 5 (Transaction 10 from Tang et al.) ### 
+def scmsuite_remove_catalog_list_generator(retail_store_id: int, catalog_id: int, catalog_version: int) -> Transaction:
+    """
+    Transaction 5.
+    Lock-based transaction.
+    RetailStoreCountryCenterManagerImpl.java#removeCatalogList
+    https://github.com/doublechaintech/scm-biz-suite/blob/82cc55dea9660beb478879040ebd31f32fd33109/bizcore/WEB-INF/retailscm_core_src/com/doublechaintech/retailscm/retailstorecountrycenter/RetailStoreCountryCenterManagerImpl.java#L742-L765
+
+    
+    PSEUDOCODE:
+    In:
+    TRANSACTION START
+    SELECT * FROM retail_store_country_center WHERE id = retailStoreCountryCenterId FOR UPDATE
+    SELECT * FROM catalog WHERE id IN (catalogIds) AND owner_id = retailStoreCountryCenterId
+    UPDATE retail_store_country_center SET version = version + 1 WHERE id = retailStoreCountryCenterId
+    DELETE FROM catalog WHERE id IN (catalogIds)
+    TRANSACTION COMMIT
+    """
+    t = Transaction()
+    t.append_read(f"retail_store_id({retail_store_id})")
+    t.append_read(f"catalog_id,catalog_version({catalog_id, catalog_version})")
+    t.append_write(f"catalog_new_version({catalog_version+1})")
+    t.append_write("catalog_delete")
+    return t
+
+def scmsuite_remove_catalog_list_sim(num_txn: int) -> list[str]:
+    """
+    Example output:
+    ['r-retail_store_id(29)', 'r-catalog_id,catalog_version((34, 5))', 'w-catalog_new_version(6)', 'w-catalog_delete']
+    ['r-retail_store_id(11)', 'r-catalog_id,catalog_version((8, 3))', 'w-catalog_new_version(4)', 'w-catalog_delete']
+    ['r-retail_store_id(36)', 'r-catalog_id,catalog_version((27, 8))', 'w-catalog_new_version(9)', 'w-catalog_delete']
+    ['r-retail_store_id(12)', 'r-catalog_id,catalog_version((5, 1))', 'w-catalog_new_version(2)', 'w-catalog_delete']
+    ['r-retail_store_id(20)', 'r-catalog_id,catalog_version((43, 4))', 'w-catalog_new_version(5)', 'w-catalog_delete']
+    ['r-retail_store_id(32)', 'r-catalog_id,catalog_version((2, 5))', 'w-catalog_new_version(6)', 'w-catalog_delete']
+    ['r-retail_store_id(47)', 'r-catalog_id,catalog_version((30, 2))', 'w-catalog_new_version(3)', 'w-catalog_delete']
+    ['r-retail_store_id(27)', 'r-catalog_id,catalog_version((5, 1))', 'w-catalog_new_version(2)', 'w-catalog_delete']
+    ['r-retail_store_id(27)', 'r-catalog_id,catalog_version((19, 4))', 'w-catalog_new_version(5)', 'w-catalog_delete']
+    ['r-retail_store_id(41)', 'r-catalog_id,catalog_version((46, 5))', 'w-catalog_new_version(6)', 'w-catalog_delete']
+    """
+
+    for _ in range(num_txn):
+        retail_store_id = np.random.randint(1, 50)
+        catalog_id = np.random.randint(1, 50)
+        catalog_version = np.random.randint(1, 10)
+        result = scmsuite_remove_catalog_list_generator(retail_store_id, catalog_id, catalog_version)
+        print(result)
+
+
+### The following functions no longer exist in the codebase ###
 
 def scmsuite() -> Transaction:
     """
@@ -167,7 +283,6 @@ def scmsuite() -> Transaction:
     t = Transaction()
     return t
 
-# This function no longer exists in the codebase
 def scmsuite() -> Transaction:
     """
     Transaction 5.
@@ -191,9 +306,15 @@ def main():
     # Number of transactions to simulate per transaction type
     num_txn_1 = 10
     num_txn_2 = 10
+    num_txn_3 = 10
+    num_txn_4 = 10
+    num_txn_5 = 10
 
     # scmsuite_internal_save_retail_sim(num_txn_1) # Transaction 1
-    scmsuite_add_supply_order_sim(num_txn_2) # Transaction 6
+    # scmsuite_add_supply_order_sim(num_txn_2) # Transaction 6
+    # scmsuite_get_update_sql_sim(num_txn_3) # Transaction 2
+    # scmsuite_copy_catalog_form_sim(num_txn_4) # Transaction 11
+    scmsuite_remove_catalog_list_sim(num_txn_5) # Transaction 10
 
 if __name__ == '__main__':
     main()
