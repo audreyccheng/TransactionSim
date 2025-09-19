@@ -7,53 +7,53 @@ the Bad, and the Ugly: https://ipads.se.sjtu.edu.cn/_media/publications/concerto
 ### EXAMPLE OUTPUT ###
 
 Generating Broadleaf update cart simulation
-['r-cart(30)', 'w-order(8)']
-['r-cart(92)', 'w-order(19)']
-['r-cart(50)', 'w-order(6)']
-['r-cart(64)', 'w-order(44)']
-['r-cart(68)', 'w-order(63)']
+['r-cart(6)', 'w-order(21)']
+['r-cart(48)', 'w-order(67)']
+['r-cart(97)', 'w-order(50)']
+['r-cart(45)', 'w-order(54)']
+['r-cart(98)', 'w-order(97)']
 
 Generating Broadleaf rate item simulation
-['r-summary(41)', 'r-detail(11)', 'w-detail(11)/rating(8)', 'w-summary(41)/rating(8)']
-['r-summary(99)', 'r-detail(89)', 'w-detail(89)/rating(3)', 'w-summary(99)/rating(3)']
-['r-summary(93)', 'r-detail(3)', 'w-detail(3)/rating(4)', 'w-summary(93)/rating(4)']
-['r-summary(77)', 'r-detail(3)', 'w-detail(3)/rating(8)', 'w-summary(77)/rating(8)']
-['r-summary(60)', 'r-detail(36)', 'w-detail(36)/rating(3)', 'w-summary(60)/rating(3)']
+['r-summary(81)', 'r-detail(20)', 'w-detail(20)/rating(5)', 'w-summary(81)/rating(5)']
+['r-summary(42)', 'r-detail(76)', 'w-detail(76)/rating(4)', 'w-summary(42)/rating(4)']
+['r-summary(14)', 'r-detail(13)', 'w-detail(13)/rating(6)', 'w-summary(14)/rating(6)']
+['r-summary(87)', 'r-detail(48)', 'w-detail(48)/rating(2)', 'w-summary(87)/rating(2)']
+['r-summary(26)', 'r-detail(95)', 'w-detail(95)/rating(8)', 'w-summary(26)/rating(8)']
 
 Generating Broadleaf order payment simulation
-['w-amount(224.15)', 'w-unconfirmed type', 'w-orderPayment((162, 457))', 'w-customerPayment(457)']
-['w-amount(134.06)', 'w-unconfirmed type', 'w-orderPayment((861, 86))', 'w-customerPayment(86)']
-['w-amount(166.35)', 'w-unconfirmed type', 'w-orderPayment((891, 439))', 'w-customerPayment(439)']
-['w-amount(194.08)', 'w-unconfirmed type', 'w-orderPayment((358, 624))', 'w-customerPayment(624)']
-['w-amount(218.44)', 'w-unconfirmed type', 'w-orderPayment((937, 765))', 'w-customerPayment(765)']
+['r-cart(639)', 'r-customer(224)', 'r-customer_payment(889)', 'w-order_payment(639)']
+['r-cart(514)', 'r-customer(763)', 'w-payment(889)', 'r-customer_payment(889)']
+['r-cart(632)', 'r-customer(427)', 'w-payment(889)']
+['r-cart(410)', 'r-customer(314)', 'w-payment(889)', 'r-customer_payment(889)', 'w-order_payment(410)']
+['r-cart(923)', 'r-customer(104)', 'r-customer_payment(889)']
 
 Generating Broadleaf save offer simulation
-['w-offerCode(758)', 'w-offer(758)']
-['w-offerCode(345)', 'w-offer(345)']
-['w-offerCode(951)', 'w-offer(951)']
-['w-offerCode(539)', 'w-offer(539)']
-['w-offerCode(97)', 'w-offer(97)']
+['w-offerCode(889)', 'w-offer(889)']
+['w-offerCode(424)', 'w-offer(424)']
+['w-offerCode(938)', 'w-offer(938)']
+['w-offerCode(609)', 'w-offer(609)']
+['w-offerCode(100)', 'w-offer(100)']
 
 Generating Broadleaf get offer simulation
-['r-offer(934)']
-['r-offer(570)']
-['r-offer(665)']
-['r-offer(872)']
-['r-offer(99)']
+['r-offer(669)']
+['r-offer(294)']
+['r-offer(710)']
+['r-offer(816)']
+['r-offer(340)']
 
 Generating Broadleaf get next id simulation
-['r-id(79)', 'w-id(79)', 'w-id(79)']
-['r-id(73)', 'w-id(73)', 'w-id(73)']
-['r-id(62)', 'w-id(62)', 'w-id(62)']
-['r-id(38)', 'w-id(38)']
-['r-id(44)', 'w-id(44)']
+['r-id(4)', 'w-id(4)']
+['r-id(3)', 'w-id(3)']
+['r-id(14)', 'w-id(14)']
+['r-id(86)', 'w-id(86)', 'w-id(86)']
+['r-id(11)', 'w-id(11)', 'w-id(11)']
 
 Generating Broadleaf decrement SKU simulation
-['r-quantity(88)', 'w-quantity(88)', 'r-quantity(25)', 'w-quantity(25)', 'r-quantity(66)', 'w-quantity(66)', 'r-quantity(57)', 'w-quantity(57)']
-['r-quantity(27)', 'w-quantity(27)', 'r-quantity(36)', 'w-quantity(36)', 'r-quantity(60)', 'w-quantity(60)', 'r-quantity(14)', 'w-quantity(14)']
-['r-quantity(82)', 'w-quantity(82)', 'r-quantity(28)', 'w-quantity(28)', 'r-quantity(26)', 'w-quantity(26)', 'r-quantity(24)', 'w-quantity(24)']
-['r-quantity(47)', 'w-quantity(47)', 'r-quantity(45)', 'w-quantity(45)', 'r-quantity(53)', 'w-quantity(53)', 'r-quantity(94)', 'w-quantity(94)']
-['r-quantity(85)', 'w-quantity(85)', 'r-quantity(55)', 'w-quantity(55)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(38)', 'w-quantity(38)']
+['r-quantity(21)', 'w-quantity(21)', 'r-quantity(27)', 'w-quantity(27)', 'r-quantity(63)', 'w-quantity(63)', 'r-quantity(65)', 'w-quantity(65)']
+['r-quantity(27)', 'w-quantity(27)', 'r-quantity(80)', 'w-quantity(80)', 'r-quantity(32)', 'w-quantity(32)', 'r-quantity(6)', 'w-quantity(6)']
+['r-quantity(58)', 'w-quantity(58)', 'r-quantity(93)', 'w-quantity(93)', 'r-quantity(91)', 'w-quantity(91)', 'r-quantity(63)', 'w-quantity(63)']
+['r-quantity(38)', 'w-quantity(38)', 'r-quantity(71)', 'w-quantity(71)', 'r-quantity(19)', 'w-quantity(19)', 'r-quantity(7)', 'w-quantity(7)']
+['r-quantity(57)', 'w-quantity(57)', 'r-quantity(2)', 'w-quantity(2)', 'r-quantity(77)', 'w-quantity(77)', 'r-quantity(61)', 'w-quantity(61)']
 """
 
 import numpy as np
@@ -161,44 +161,62 @@ def rate_item_sim(num_transactions: int):
         print(transaction)
 
 ### Transaction 3 ###
-def create_order_payment_from_customer_payment(order, customer_payment, amount):
+def savePaymentInfo(request, response, model, payment_form, result):
     """
-    Purpose: Save order payment details
-    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework/src/main/java/org/broadleafcommerce/core/payment/service/OrderPaymentServiceImpl.java#L106C5-L149C6
+    Purpose: save payment information
+    Github: https://github.com/BroadleafCommerce/BroadleafCommerce/blob/develop-7.0.x/core/broadleaf-framework-web/src/main/java/org/broadleafcommerce/core/web/controller/checkout/BroadleafPaymentInfoController.java#L73C1-L104C1
     
     Pseudocode:
-    In: order_payments
+
+    In: carts, customers, saved_payments, customer_payments, order_payments
 
     TRANSACTION START
-    orderPayment = createOrderPayment(order, customerPayment)
-    INSERT INTO order_payments VALUES (amount, UNCONFIRMED_TRANSACTION_TYPE, orderPayment, customerPayment)
+    cart = SELECT * FROM carts WHERE id=cart_id
+    customer = SELECT * FROM customers WHERE id=customer_id
+    if payment_form.should_save_new_payment and !payment_form.should_use_customer_payment:
+        if customer_payment_id:
+            UPDATE saved_payments SET payment=payment_form where customer=customer
+        else:
+            INSERT INTO saved_payments (customer, payment_form)
+            payment_form.should_use_customer_payment = True
+    if payment_form.should_use_customer_payment:
+        customer_payment = SELECT * FROM customer_payments WHERE id = payment_form.get_customer_id()
+        if (SELECT * FROM cart_state WHERE token == customer_payment.token) == NULL:
+            orderPayment = createOrderPayment(order, customerPayment)
+            INSERT INTO order_payments VALUES (cart.amount, UNCONFIRMED_TRANSACTION_TYPE, orderPayment, customerPayment)
     TRANSACTION COMMIT
     """
-    UNCONFIRMED_TRANSACTION_TYPE = "unconfirmed type"
-    order_payment = (order, customer_payment)
+    cart_id = np.random.choice(1000)
+    customer_id = np.random.choice(1000)
     t = Transaction()
-    t.append_write(f"amount({amount})")
-    t.append_write(UNCONFIRMED_TRANSACTION_TYPE)
-    t.append_write(f"orderPayment({order_payment})")
-    t.append_write(f"customerPayment({customer_payment})")
+    t.append_read(f"cart({cart_id})")
+    t.append_read(f"customer({customer_id})")
+    should_use_customer_payment = bool(np.random.choice(2))
+    if np.random.choice(2):
+        if np.random.choice(2):
+            t.append_write(f"payment({payment_form})")
+        else:
+            t.append_write(f"payment({payment_form})")
+            should_use_customer_payment = True
+    if should_use_customer_payment:
+        t.append_read(f"customer_payment({payment_form})")
+        if np.random.choice(2):
+            t.append_write(f"order_payment({cart_id})")
     return t
 
 def order_payment_sim(num_transactions: int):
     """
     Example output:
 
-    ['w-amount(263.53)', 'w-unconfirmed type', 'w-orderPayment((110, 561))', 'w-customerPayment(561)']
-    ['w-amount(183.57)', 'w-unconfirmed type', 'w-orderPayment((379, 504))', 'w-customerPayment(504)']
-    ['w-amount(238.83)', 'w-unconfirmed type', 'w-orderPayment((498, 520))', 'w-customerPayment(520)']
-    ['w-amount(257.33)', 'w-unconfirmed type', 'w-orderPayment((681, 509))', 'w-customerPayment(509)']
-    ['w-amount(221.4)', 'w-unconfirmed type', 'w-orderPayment((223, 859))', 'w-customerPayment(859)']
+    ['r-cart(670)', 'r-customer(401)']
+    ['r-cart(60)', 'r-customer(972)', 'w-payment(177)', 'r-customer_payment(177)']
+    ['r-cart(272)', 'r-customer(639)', 'w-payment(177)', 'r-customer_payment(177)', 'w-order_payment(272)']
+    ['r-cart(961)', 'r-customer(260)', 'w-payment(177)']
+    ['r-cart(226)', 'r-customer(439)', 'w-payment(177)', 'r-customer_payment(177)', 'w-order_payment(226)']
     """
-    num_orders = 1000
-    num_customerPayment = 1000
+    payment_form = np.random.choice(1000)
     for _ in range(num_transactions):
-        t = create_order_payment_from_customer_payment(np.random.choice(range(num_orders)),
-                                                       np.random.choice(range(num_customerPayment)),
-                                                       round(np.random.normal(200, 50), 2))
+        t = savePaymentInfo(None, None, None, payment_form, None)
         print(t)
 
 ### Transaction 4 ###
